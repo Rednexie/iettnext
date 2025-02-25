@@ -15,5 +15,7 @@ COPY . .
 # Use a non-root user for security
 USER node
 
+EXPOSE 3000
+
 # Command to run the application
 CMD ["npm", "start"]
