@@ -1,4 +1,4 @@
-# betteriett – İstanbul Toplu Taşıma Yardımcısı
+# betteriett – İstanbul Toplu Taşıma 
 
 betteriett, İstanbul'un toplu taşıma sistemini daha erişilebilir, bilgilendirici ve kullanıcı dostu hale getirmek için Expo ve React Native ile geliştirilmiş, açık kaynaklı ve özelliklerle dolu bir mobil uygulamadır. Aşağıda uygulamanın temel özelliklerinin detaylı bir açıklamasını ve bu özelliklerin kullanıcılara nasıl fayda sağladığını bulabilirsiniz.
 
@@ -40,12 +40,6 @@ betteriett, İstanbul'un toplu taşıma sistemini daha erişilebilir, bilgilendi
 ### 6. **Yeniden Kullanılabilir Bileşenler & Hooklar**
 - **Bileşen Kütüphanesi:** Kolay bakım için Collapsible panel, ThemedText ve HapticTab gibi modüler UI bileşenleri.
 - **Özel Hooklar:** Tema yönetimi ve renk şeması algılama için özel React hook’ları.
-
-### 7. **Açık Veri & Gizlilik**
-- **Canlı Veri Kaynağı:** Tüm gerçek zamanlı bilgiler kamuya açık İETT API’sinden (`https://iett.deno.dev`) alınır.
-- **Takip Yok:** Uygulama hiçbir kullanıcı verisi toplamaz veya saklamaz.
-
----
 
 ## 📱 Özelliklerin Kullanıcıya Faydası
 - **Önceden Planla:** Otobüsünüzün ne zaman geleceğini ve harita üzerindeki yerini anında öğrenin.
