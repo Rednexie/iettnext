@@ -2,7 +2,7 @@ import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, us
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 
 interface Suggestion {
   DURAK_DURAK_KODU: number;
@@ -161,7 +161,7 @@ export default function DurakScreen() {
   if (!fontsLoaded) return null;
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: '#0d0d1a' }} contentContainerStyle={{ alignItems: 'center', paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+    <View style={{ flex: 1, alignItems: 'center', backgroundColor: '#0d0d1a' }}>
       <View style={styles.squareContainer}>
         <Text style={styles.header}>Durak Sorgulama</Text>
         <View style={{ width: '100%', position: 'relative' }}>
@@ -178,13 +178,19 @@ export default function DurakScreen() {
           />
           {suggestions.length > 0 && query.length > 0 && (
             <View style={styles.suggestions}>
-              <ScrollView keyboardShouldPersistTaps="handled">
-                {suggestions.map((s, idx) => (
-                  <TouchableOpacity key={s.DURAK_DURAK_KODU} style={styles.suggestionItem} onPress={() => selectSuggestion(s)}>
-                    <Text style={{ color: '#e0e0e0', fontSize: 14 }}>{`${s.DURAK_ADI} (${s.DURAK_YON_BILGISI})`}</Text>
+              <FlatList
+                data={suggestions}
+                keyExtractor={item => item.DURAK_DURAK_KODU.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity style={styles.suggestionItem} onPress={() => selectSuggestion(item)}>
+                    <Text style={{ color: '#e0e0e0', fontSize: 14 }}>{`${item.DURAK_ADI} (${item.DURAK_YON_BILGISI})`}</Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
+                )}
+                keyboardShouldPersistTaps="handled"
+                style={{ maxHeight: 260 }}
+                showsVerticalScrollIndicator={true}
+                persistentScrollbar={true}
+              />
             </View>
           )}
         </View>
@@ -201,7 +207,7 @@ export default function DurakScreen() {
         ) : null}
         {!loading && arrivals.map((arrival, idx) => <ArrivalCard key={idx} arrival={arrival} />)}
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -245,12 +251,13 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(138, 108, 241, 0.1)',
     borderWidth: 1,
     borderRadius: 8,
-    maxHeight: 180,
+    maxHeight: 260,
     position: 'absolute',
     top: 48,
     width: '100%',
     marginTop: 4,
     zIndex: 1000,
+    overflow: 'hidden',
   },
   suggestionItem: {
     paddingVertical: 10,
