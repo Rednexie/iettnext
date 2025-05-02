@@ -2,7 +2,7 @@ import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, us
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface Suggestion {
   DURAK_DURAK_KODU: number;
@@ -27,51 +27,48 @@ interface Arrival {
 }
 
 function ArrivalCard({ arrival }: { arrival: Arrival }) {
-  const [location, setLocation] = React.useState('Konum Bilinmiyor');
-  React.useEffect(() => {
-    let cancelled = false;
-    async function fetchLocation() {
-      if (arrival.son_konum && arrival.son_konum.includes(',')) {
-        const [lonStr, latStr] = arrival.son_konum.split(',').map(s => s.trim());
-        const lon = parseFloat(lonStr);
-        const lat = parseFloat(latStr);
-        if (!isNaN(lon) && !isNaN(lat)) {
-          try {
-            const response = await fetch('https://iett.deno.dev/location-transform', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ lon, lat }),
-            });
-            const locText = await response.text();
-            if (!cancelled) setLocation(locText);
-          } catch {
-            if (!cancelled) setLocation('Konum Bilinmiyor');
-          }
-        }
-      }
-    }
-    fetchLocation();
-    return () => { cancelled = true; };
-  }, [arrival.son_konum]);
   let lat: number | null = null, lon: number | null = null;
   if (arrival.son_konum && arrival.son_konum.includes(',')) {
     const [lonStr, latStr] = arrival.son_konum.split(',').map(s => s.trim());
     lon = parseFloat(lonStr);
     lat = parseFloat(latStr);
   }
-  const canShowMapLink = lat && lon && location !== 'Konum Bilinmiyor';
+  const [location, setLocation] = React.useState('Yükleniyor');
+  React.useEffect(() => {
+    let cancelled = false;
+    async function fetchLocation() {
+      if (lat && lon) {
+        try {
+          const response = await fetch('https://iett.deno.dev/location-transform', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lon, lat }),
+          });
+          const locText = await response.text();
+          if (!cancelled) setLocation(locText);
+        } catch {
+          if (!cancelled) setLocation('Konum Bilinmiyor');
+        }
+      }
+    }
+    fetchLocation();
+    return () => { cancelled = true; };
+  }, [arrival.son_konum]);
+  const canShowMapLink = lat && lon;
   return (
     <View style={styles.resultCard}>
-      <Text style={styles.resultTitle}>{arrival.hatadi} ({arrival.hatkodu})</Text>
-      <Text style={styles.resultLine}>Varış: {arrival.saat} ({arrival.dakika} dk)</Text>
+      <Text style={styles.resultTitle}>
+        {arrival.hatkodu}
+        <Text style={{ color: '#b39dfa', fontWeight: 'bold' }}> ⇒ {arrival.saat} ({arrival.dakika} dk) {arrival.son_hiz} km/sa</Text>
+      </Text>
+      <Text style={styles.resultLine}>{arrival.hatadi}</Text>
+      <Text style={styles.carInfo} selectable={true}>{arrival.kapino} ({arrival.ototip})</Text>
       <View style={styles.carInfoRow}>
-        <Text style={styles.carInfo} selectable={true}>{arrival.kapino}</Text>
-        <Text style={styles.carInfo}> {arrival.ototip}</Text>
-        <FontAwesome5 name="wifi" size={15} color={arrival.wifi ? '#4ade80' : '#ef4444'} style={styles.featureIcon} />
-        <FontAwesome5 name="snowflake" size={15} color={arrival.klima ? '#4ade80' : '#ef4444'} style={styles.featureIcon} />
-        <FontAwesome5 name="usb" size={15} color={arrival.usb ? '#4ade80' : '#ef4444'} style={styles.featureIcon} />
-        <FontAwesome5 name="wheelchair" size={15} color={arrival.engelli ? '#4ade80' : '#ef4444'} style={styles.featureIcon} />
-        <FontAwesome5 name="bicycle" size={15} color={arrival.bisiklet ? '#4ade80' : '#ef4444'} style={styles.featureIcon} />
+        <FontAwesome5 name="wifi" size={18} color={arrival.wifi ? '#4ade80' : '#ef4444'} style={styles.featureIcon} />
+        <FontAwesome5 name="snowflake" size={18} color={arrival.klima ? '#4ade80' : '#ef4444'} style={styles.featureIcon} />
+        <FontAwesome5 name="usb" size={18} color={arrival.usb ? '#4ade80' : '#ef4444'} style={styles.featureIcon} />
+        <FontAwesome5 name="wheelchair" size={18} color={arrival.engelli ? '#4ade80' : '#ef4444'} style={styles.featureIcon} />
+        <FontAwesome5 name="bicycle" size={18} color={arrival.bisiklet ? '#4ade80' : '#ef4444'} style={styles.featureIcon} />
       </View>
       {canShowMapLink ? (
         <Text style={styles.locationRow}>
@@ -108,7 +105,7 @@ export default function DurakScreen() {
     setSelectedStop(null);
     setArrivals([]);
     setError('');
-    if (!text.trim()) {
+    if (text.trim() === "") {
       setSuggestions([]);
       return;
     }
@@ -161,53 +158,57 @@ export default function DurakScreen() {
   if (!fontsLoaded) return null;
 
   return (
-    <View style={{ flex: 1, alignItems: 'center', backgroundColor: '#0d0d1a' }}>
-      <View style={styles.squareContainer}>
-        <Text style={styles.header}>Durak Sorgulama</Text>
-        <View style={{ width: '100%', position: 'relative' }}>
-          <TextInput
-            ref={inputRef}
-            style={styles.inputBox}
-            placeholder="Durak adı girin..."
-            placeholderTextColor="#aaa"
-            value={query}
-            onChangeText={fetchSuggestions}
-            autoCorrect={false}
-            autoCapitalize="none"
-            returnKeyType="search"
-          />
-          {suggestions.length > 0 && query.length > 0 && (
-            <View style={styles.suggestions}>
-              <FlatList
-                data={suggestions}
-                keyExtractor={item => item.DURAK_DURAK_KODU.toString()}
-                renderItem={({ item }) => (
-                  <TouchableOpacity style={styles.suggestionItem} onPress={() => selectSuggestion(item)}>
-                    <Text style={{ color: '#e0e0e0', fontSize: 14 }}>{`${item.DURAK_ADI} (${item.DURAK_YON_BILGISI})`}</Text>
-                  </TouchableOpacity>
-                )}
-                keyboardShouldPersistTaps="handled"
-                style={{ maxHeight: 260 }}
-                showsVerticalScrollIndicator={true}
-                persistentScrollbar={true}
-              />
-            </View>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: '#18182c' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    >
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled" style={{ backgroundColor: '#18182c' }}>
+        <View style={{ flex: 1, alignItems: 'center', paddingBottom: 40, backgroundColor: '#18182c' }}>
+          <View style={styles.squareContainer}>
+            <Text style={styles.header}>Durak Sorgulama</Text>
+            <TextInput
+              ref={inputRef}
+              style={styles.inputBox}
+              placeholder="Durak adı veya kodu girin"
+              placeholderTextColor="#aaa"
+              value={query}
+              onChangeText={fetchSuggestions}
+              autoCorrect={false}
+              autoCapitalize="none"
+              returnKeyType="search"
+            />
+            {suggestions.length > 0 && (
+               <View style={[styles.suggestions, { width: '100%', marginTop: 4 }]}>
+                <ScrollView keyboardShouldPersistTaps="handled">
+                  {suggestions.map((item, idx) => (
+                    <TouchableOpacity
+                      key={item.DURAK_DURAK_KODU}
+                      style={styles.suggestionItem}
+                      onPress={() => selectSuggestion(item)}
+                    >
+                      <Text style={{ color: '#e0e0e0', fontSize: 14 }}>{`${item.DURAK_ADI} (${item.DURAK_YON_BILGISI})`}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </View>
+          {selectedStop && (
+            <TouchableOpacity style={styles.refreshBtn} onPress={handleRefresh}>
+              <FontAwesome5 name="sync-alt" size={18} color="#fff" />
+              <Text style={styles.refreshBtnText}>  Yenile</Text>
+            </TouchableOpacity>
           )}
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {loading && <ActivityIndicator size="large" color="#8a6cf1" style={{ marginTop: 24 }} />}
+          {!loading && arrivals.length === 0 && selectedStop && !error ? (
+            <Text style={{ color: '#aaa', textAlign: 'center', marginTop: 12 }}>Varacak otobüs bulunamadı.</Text>
+          ) : null}
+          {!loading && arrivals.map((arrival, idx) => <ArrivalCard key={idx} arrival={arrival} />)}
         </View>
-        {selectedStop && (
-          <TouchableOpacity style={styles.refreshBtn} onPress={handleRefresh}>
-            <FontAwesome5 name="sync-alt" size={18} color="#fff" />
-            <Text style={styles.refreshBtnText}>  Yenile</Text>
-          </TouchableOpacity>
-        )}
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-        {loading && <ActivityIndicator size="large" color="#8a6cf1" style={{ marginTop: 24 }} />}
-        {!loading && arrivals.length === 0 && selectedStop && !error ? (
-          <Text style={{ color: '#aaa', textAlign: 'center', marginTop: 12 }}>Varacak otobüs bulunamadı.</Text>
-        ) : null}
-        {!loading && arrivals.map((arrival, idx) => <ArrivalCard key={idx} arrival={arrival} />)}
-      </View>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -251,14 +252,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(138, 108, 241, 0.1)',
     borderWidth: 1,
     borderRadius: 8,
-    maxHeight: 260,
-    position: 'absolute',
-    top: 48,
-    width: '100%',
-    marginTop: 4,
     zIndex: 1000,
     overflow: 'hidden',
-  },
+  },  
   suggestionItem: {
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -292,41 +288,45 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
   },
   resultTitle: {
-    color: '#8a6cf1',
-    fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-    marginBottom: 6,
+    color: '#b39dfa',
+    fontSize: 18,
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 2,
   },
   resultLine: {
-    color: '#e0e0e0',
-    fontSize: 13,
+    color: '#fff',
+    fontSize: 14,
     fontFamily: 'Inter_400Regular',
-    marginBottom: 8,
+    marginBottom: 4,
+  },
+  carInfo: {
+    color: '#c0c0c0',
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    marginBottom: 2,
   },
   carInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 6,
-  },
-  carInfo: {
-    color: '#e0e0e0',
-    fontSize: 13,
-    fontFamily: 'Inter_400Regular',
-    marginRight: 6,
+    gap: 8,
   },
   featureIcon: {
-    marginHorizontal: 3,
+    marginHorizontal: 5,
   },
   locationRow: {
-    color: '#8a6cf1',
+    color: '#b39dfa',
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
-    marginTop: 2,
+    marginTop: 8,
   },
   tamkonumLink: {
-    color: '#8a6cf1',
+    color: '#b39dfa',
     textDecorationLine: 'underline',
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
