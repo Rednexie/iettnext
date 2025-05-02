@@ -1,8 +1,8 @@
-# betteriett – Istanbul Public Transport Companion
+# nextiett – Istanbul Public Transport Companion
 
 [🇹🇷 Türkçe](./README.tr.md)
 
-betteriett is a feature-rich, open-source mobile application built with Expo and React Native, designed to make Istanbul's public transport system more accessible, informative, and user-friendly. Below, you'll find a detailed breakdown of the application's core features and how they benefit users.
+nextiett is a feature-rich, open-source mobile application built with Expo and React Native, designed to make Istanbul's public transport system more accessible, informative, and user-friendly. Below, you'll find a detailed breakdown of the application's core features and how they benefit users.
 
 ---
 
