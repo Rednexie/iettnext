@@ -1,6 +1,6 @@
-# betteriett – İstanbul Toplu Taşıma 
+# nextiett – İstanbul Toplu Taşıma 
 
-betteriett, İstanbul'un toplu taşıma sistemini daha erişilebilir, bilgilendirici ve kullanıcı dostu hale getirmek için Expo ve React Native ile geliştirilmiş, açık kaynaklı ve özelliklerle dolu bir mobil uygulamadır. Aşağıda uygulamanın temel özelliklerinin detaylı bir açıklamasını ve bu özelliklerin kullanıcılara nasıl fayda sağladığını bulabilirsiniz.
+nextiett, İstanbul'un toplu taşıma sistemini daha erişilebilir, bilgilendirici ve kullanıcı dostu hale getirmek için Expo ve React Native ile geliştirilmiş, açık kaynaklı ve özelliklerle dolu bir mobil uygulamadır. Aşağıda uygulamanın temel özelliklerinin detaylı bir açıklamasını ve bu özelliklerin kullanıcılara nasıl fayda sağladığını bulabilirsiniz.
 
 ---
 
