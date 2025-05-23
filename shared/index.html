@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iettnext</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0d0d1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #2a2a4e 100%);
+            color: #8a6cf1;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .card {
+            background: linear-gradient(145deg, #1a1a2e 0%, #252542 100%);
+            border: 1px solid rgba(138, 108, 241, 0.1);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(138, 108, 241, 0.1), 0 4px 6px -2px rgba(138, 108, 241, 0.05);
+            border-color: rgba(138, 108, 241, 0.3);
+        }
+
+        .button {
+            background: linear-gradient(135deg, #6a4cff 0%, #8a6cf1 100%);
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(106, 76, 255, 0.1);
+        }
+
+        .button:hover {
+            background: linear-gradient(135deg, #8a6cf1 0%, #9a7cf2 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(106, 76, 255, 0.2);
+        }
+
+        .footer-text {
+            color: #8a6cf1;
+            text-align: center;
+            margin-top: auto;
+            padding: 20px;
+            font-size: 16px;
+            background: linear-gradient(180deg, rgba(26, 26, 46, 0) 0%, rgba(26, 26, 46, 0.5) 100%);
+        }
+
+        .footer-link {
+            color: #8a6cf1;
+            text-decoration: none;
+            border-bottom: 1px dashed #8a6cf1;
+            display: inline;
+            padding: 0;
+            width: auto;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+
+        .footer-link:hover {
+            color: #9a7cf2;
+            border-bottom-style: solid;
+        }
+
+        .short-underline {
+            position: relative;
+        }
+        .short-underline::after {
+            content: "";
+            display: block;
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+            width: 60%;
+            border-bottom: 2px dashed #8a6cf1;
+        }
+        .short-underline:hover::after {
+            border-bottom-style: solid;
+            border-bottom-color: #9a7cf2;
+        }
+        .short-underline:hover {
+            color: #9a7cf2;
+        }
+
+        /* Fix alternative links underline */
+        .alt-link {
+            text-decoration: none !important;
+            border-bottom: 2px dashed #8a6cf1;
+            position: relative;
+            transition: border-color 0.3s, color 0.3s;
+        }
+        .alt-link:hover {
+            border-bottom: 2px solid #9a7cf2;
+            color: #9a7cf2;
+        }
+        .alt-link.short-underline::after {
+            border-bottom: none !important;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.875rem;
+            }
+            .card {
+                margin: 0 1rem;
+            }
+            .card h2 {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 1rem;
+            }
+            .header {
+                margin: 0 1rem;
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <main class="container mx-auto px-4 py-8 flex-grow">
+        <h1 class="text-4xl font-bold text-center header p-8 rounded-2xl mb-12 tracking-tight mt-20">
+            <a href="/about" class="hover:text-purple-300 transition-colors duration-200">iettnext</a>
+        </h1>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 max-w-4xl mx-auto mt-12">
+            <a href="/arac" class="card p-8 flex flex-col items-center text-center hover:scale-105 transition-transform">
+                <span class="text-3xl mb-4">🚍</span>
+                <span class="text-xl font-bold text-[#8a6cf1] mb-2">Araç Sorgulama</span>
+                <span class="text-gray-300">Plaka veya kapı kodu ile araç bilgilerini sorgula</span>
+            </a>
+            <a href="/harita" class="card p-8 flex flex-col items-center text-center hover:scale-105 transition-transform">
+                <span class="text-3xl mb-4">🗺️</span>
+                <span class="text-xl font-bold text-[#8a6cf1] mb-2">Canlı Otobüs Haritası</span>
+                <span class="text-gray-300">Otobüslerin anlık konumlarını haritada gör</span>
+            </a>
+            <a href="/durak" class="card p-8 flex flex-col items-center text-center hover:scale-105 transition-transform">
+                <span class="text-3xl mb-4">🚏</span>
+                <span class="text-xl font-bold text-[#8a6cf1] mb-2">Durak Sorgulama</span>
+                <span class="text-gray-300">Durak bilgilerini ve geçen hatları sorgula.</span>
+            </a>
+            <a href="/hat" class="card p-8 flex flex-col items-center text-center hover:scale-105 transition-transform">
+                <span class="text-3xl mb-4">📋</span>
+                <span class="text-xl font-bold text-[#8a6cf1] mb-2">Hat Sorgulama</span>
+                <span class="text-gray-300">Otobüs hatlarının saatleri ve anlık duyuruları hakkında bilgi edin.</span>
+            </a>
+            <a href="/eski" class="card p-8 flex flex-col items-center text-center hover:scale-105 transition-transform">
+                <span class="text-3xl mb-4">🕰️</span>
+                <span class="text-xl font-bold text-[#8a6cf1] mb-2">Eski Hatlar</span>
+                <span class="text-gray-300">Kaldırılmış otobüs hatlarını ara.</span>
+            </a>
+            <a href="https://github.com/Rednexie/iettnext" target="_blank" class="card p-8 flex flex-col items-center text-center hover:scale-105 transition-transform">
+                <span class="text-3xl mb-4">🐙</span>
+                <span class="text-xl font-bold text-[#8a6cf1] mb-2">GitHub</span>
+                <span class="text-gray-300">Android kaynak kodunu görüntüle veya katkı sağla</span>
+            </a>
+        </div>
+
+        <p class="footer-text mt-16">
+            <a target="_blank" href="https://github.com/Rednexie" class="footer-link">Rednexie</a> tarafından geliştirilmiştir,
+            <a target="_blank" href="https://deno.com/" class="footer-link">Deno</a> üzerinde hostlanmaktadir.
+        </p>
+
+        <div class="flex justify-center mt-16">
+            <a href="/apk" id="apk-download-btn" class="button py-4 px-8 rounded-xl text-white text-lg font-medium text-center">
+                Android Uygulamasını İndir
+            </a>
+        </div>
+        
+        <!-- Modal Dialog -->
+        <div id="apk-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 hidden">
+            <div id="apk-modal-content" class="bg-[#1a1a2e] rounded-2xl shadow-lg p-12 min-w-[380px] max-w-lg w-full text-center relative outline-none" style="background-color: #1a1a2e;">
+                <button id="close-modal" class="absolute top-3 right-3 text-[#8a6cf1] hover:text-[#9a7cf2] text-2xl font-bold">&times;</button>
+                <h2 class="text-xl font-semibold mb-5 text-[#8a6cf1]">Android Uygulaması</h2>
+                <div class="flex flex-col items-center gap-2">
+                  <a href="/apk" download class="button w-full py-2 rounded-xl font-medium mb-2 text-white text-base">APK olarak İndir</a>
+                  <a href="https://github.com/Rednexie/iett" target="_blank" class="footer-link short-underline inline py-1 text-[#8a6cf1] text-sm font-medium alt-link">Github Repo(Açık Kaynak Kodu)</a>
+                  <a href="https://www.virustotal.com/gui/file/b7da2b1b03d73baf4c346aa10743e418453fcb4ebccc0cc8205cca03a3cff76d?nocache=1" target="_blank" class="footer-link short-underline inline py-1 text-[#8a6cf1] text-sm font-medium alt-link">Virustotal</a>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/gh/Rednexie/rednexie.github.io@main/cdn/noconsole.js"></script>
+    <script>
+        // Modal open/close logic
+        document.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById('apk-download-btn');
+            const modal = document.getElementById('apk-modal');
+            const close = document.getElementById('close-modal');
+            const modalContent = document.getElementById('apk-modal-content');
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                modal.classList.remove('hidden');
+            });
+            close.addEventListener('click', function() {
+                modal.classList.add('hidden');
+            });
+            // Close modal on background click
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                }
+            });
+            // Prevent modal close when clicking inside modal content
+            modalContent.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+        });
+        </script>
+        
+    </main>
+</body>
+</html>

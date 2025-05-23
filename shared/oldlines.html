@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iettnext</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0d0d1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            margin-left: 0;
+            transition: margin-left 0.3s ease-in-out;
+        }
+
+        @media (min-width: 768px) {
+            .content {
+                margin-left: 0;
+            }
+        }
+
+        .square-container {
+            background: linear-gradient(145deg, #1a1a2e 0%, #252542 100%);
+            border: 1px solid rgba(138, 108, 241, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .input-box {
+            background: rgba(13, 13, 26, 0.6);
+            border: 1px solid rgba(138, 108, 241, 0.2);
+            color: #e0e0e0;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .input-box:focus {
+            border-color: #8a6cf1;
+            box-shadow: 0 0 0 2px rgba(138, 108, 241, 0.2);
+            outline: none;
+        }
+
+        .suggestions-container {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: rgba(26, 26, 46, 0.95);
+            border: 1px solid rgba(138, 108, 241, 0.2);
+            border-radius: 8px;
+            margin-top: 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            display: none;
+        }
+
+        .suggestion-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .suggestion-item:hover {
+            background: rgba(138, 108, 241, 0.1);
+        }
+
+        .suggestion-item.selected {
+            background: rgba(138, 108, 241, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <nav class="bg-gradient-to-b from-[#1a1a2e] to-[#252542] p-4 fixed top-0 w-full z-20">
+        <div class="flex justify-between items-center">
+            <a href="/" class="text-2xl font-bold text-[#8a6cf1]">iettnext</a>
+            <div class="flex space-x-4">
+                <a href="/durak" class="text-gray-300 hover:text-white">Durak</a>
+                <a href="/hat" class="text-gray-300 hover:text-white">Hat</a>
+                <a href="/arac" class="text-gray-300 hover:text-white">Araç</a>
+                <a href="/harita" class="text-gray-300 hover:text-white">Harita</a>
+                <a href="/eski" class="text-gray-300 hover:text-white">Eski Hatlar</a>
+                <a href="/about" class="text-white font-medium">Hakkında</a>
+            </div>
+        </div>
+    </nav>
+    <div class="pt-20"></div>
+    <div class="content">
+        <div class="square-container">
+            <h1 class="text-3xl font-bold mb-6 text-center text-[#8a6cf1]">Eski Hatlar Arama</h1>
+            <div class="relative">
+                <input 
+                    id="searchInput" 
+                    type="text" 
+                    placeholder="Hat kodu veya adı girin..." 
+                    class="input-box w-full p-4 mb-4 text-lg"
+                    autocomplete="off"
+                >
+                <div id="suggestions" class="suggestions-container"></div>
+            </div>
+            <div id="result" class="mt-6"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/gh/Rednexie/rednexie.github.io@main/cdn/noconsole.js"></script>
+    <script>
+        const DATA_URL = '/api/oldlines';
+        const STORAGE_KEY = 'oldlines_data';
+        const STORAGE_DATE_KEY = 'oldlines_date';
+        const CHECK_INTERVAL = 24 * 60 * 60 * 1000;
+
+        let selectedIndex = -1;
+        let visibleSuggestions = [];
+
+        async function fetchAndSaveOldLines(force = false) {
+            const lastCheck = parseInt(localStorage.getItem('oldlines_last_check') || '0', 10);
+            const now = Date.now();
+            if (!force && now - lastCheck < CHECK_INTERVAL && localStorage.getItem(STORAGE_KEY)) {
+                return;
+            }
+            localStorage.setItem('oldlines_last_check', now.toString());
+            const res = await fetch(DATA_URL);
+            if (res.ok) {
+                const json = await res.json();
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(json.data));
+                localStorage.setItem(STORAGE_DATE_KEY, json.date);
+            }
+        }
+
+        function getOldLinesData() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+
+        function renderResult(line) {
+            const resultDiv = document.getElementById('result');
+            if (!line) {
+                resultDiv.innerHTML = '<p class="text-center mt-4 text-gray-400">Hat bulunamadı.</p>';
+                return;
+            }
+
+            let stopsHtml = '';
+            if (line.stop.length > 0) {
+                stopsHtml = `<div class='relative metro-diagram flex flex-col items-start ml-4'>`;
+                stopsHtml += `<div class='absolute left-2 top-3 bottom-3 w-1 bg-[#8a6cf1] z-0' style='min-height:32px;'></div>`;
+                for (let i = 0; i < line.stop.length; i++) {
+                    stopsHtml += `<div class='flex items-center relative min-h-[42px] z-10'>
+                        <div class='w-5 h-5 rounded-full bg-[#8a6cf1] border-2 border-white z-10'></div>
+                        <span class='ml-4 text-base font-semibold text-white'>${line.stop[i]}</span>
+                    </div>`;
+                }
+                stopsHtml += `</div>`;
+            }
+
+            resultDiv.innerHTML = `
+                <div class="bg-gradient-to-br from-[#1a1a2e] to-[#252542] rounded-xl p-6 border border-[#8a6cf1]/20">
+                    <div class="font-bold text-2xl mb-4 text-[#8a6cf1]">${line.name}</div>
+                    <div class="text-purple-300 mb-4">${line.desc || ''}</div>
+                    <div class="mb-4">
+                        <b>Duraklar:</b>
+                        <div class="mt-4">${stopsHtml}</div>
+                    </div>
+                    ${line.alt && line.alt.length ? `<div class="mb-2"><b>Alternatif:</b> ${line.alt.join(', ')}</div>` : ''}
+                    ${line.freq ? `<div class="mb-2"><b>Sıklık:</b> ${line.freq}</div>` : ''}
+                </div>
+            `;
+        }
+
+        function showSuggestions(query) {
+            const suggestionsDiv = document.getElementById('suggestions');
+            const lines = getOldLinesData();
+            
+            if (!query) {
+                suggestionsDiv.style.display = 'none';
+                visibleSuggestions = [];
+                return;
+            }
+
+            query = query.toLowerCase();
+            visibleSuggestions = lines.filter(line => 
+                line.name.toLowerCase().includes(query)
+            ).slice(0, 5);
+
+            if (visibleSuggestions.length > 0) {
+                suggestionsDiv.innerHTML = visibleSuggestions
+                    .map((line, index) => `
+                        <div class="suggestion-item ${index === selectedIndex ? 'selected' : ''}" 
+                             onclick="selectSuggestion('${line.name}')"
+                             data-index="${index}">
+                            ${line.name}
+                        </div>
+                    `).join('');
+                suggestionsDiv.style.display = 'block';
+            } else {
+                suggestionsDiv.style.display = 'none';
+            }
+            
+            selectedIndex = -1;
+        }
+
+        function selectSuggestion(lineName) {
+            const searchInput = document.getElementById('searchInput');
+            searchInput.value = lineName;
+            document.getElementById('suggestions').style.display = 'none';
+            
+            const lines = getOldLinesData();
+            const selectedLine = lines.find(line => line.name === lineName);
+            renderResult(selectedLine);
+        }
+
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const query = e.target.value.trim();
+            showSuggestions(query);
+            // Do not auto-display result on input, only show suggestions
+        });
+
+        document.getElementById('searchInput').addEventListener('keydown', function(e) {
+            const suggestionsDiv = document.getElementById('suggestions');
+            
+            if (suggestionsDiv.style.display === 'none') return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedIndex = Math.min(selectedIndex + 1, visibleSuggestions.length - 1);
+                updateSelection();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedIndex = Math.max(selectedIndex - 1, -1);
+                updateSelection();
+            } else if (e.key === 'Enter' && selectedIndex >= 0) {
+                e.preventDefault();
+                selectSuggestion(visibleSuggestions[selectedIndex].name);
+            } else if (e.key === 'Escape') {
+                suggestionsDiv.style.display = 'none';
+            }
+        });
+
+        function updateSelection() {
+            const items = document.querySelectorAll('.suggestion-item');
+            items.forEach(item => item.classList.remove('selected'));
+            
+            if (selectedIndex >= 0) {
+                items[selectedIndex].classList.add('selected');
+                items[selectedIndex].scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#searchInput') && !e.target.closest('#suggestions')) {
+                document.getElementById('suggestions').style.display = 'none';
+            }
+        });
+
+        (async function() {
+            await fetchAndSaveOldLines();
+        })();
+    </script>
+</body>
+</html>

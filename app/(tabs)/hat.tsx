@@ -1,0 +1,740 @@
+import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Dimensions, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+
+// Utility function to decode HTML entities and fix encoding issues
+const decodeHTMLEntities = (text: string): string => {
+  if (!text) return '';
+  
+  return text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    // Convert numeric HTML entities to characters
+    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+    // Handle hex entities
+    .replace(/&#x([\da-f]+);/gi, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
+    // Remove any other HTML tags
+    .replace(/<\/?[^>]+(>|$)/g, '');
+};
+
+// Define types
+type LineItem = {
+  line: string;
+  name: string;
+};
+
+type TimeTableItem = {
+  K_ORER_DTSAATGIDIS?: string;
+  K_ORER_DTSAATGUN?: string;
+  K_ORER_SGUNTIPI?: string;
+  K_ORER_DTSAATLVTIP?: string;
+  K_ORER_SSERVISTIPI?: string;
+};
+
+type AnnouncementItem = {
+  date?: string;
+  VERI_SAATI?: string;
+  content?: string;
+  BILGI?: string;
+  level?: string;
+  severity?: string;
+};
+
+const API_BASE = 'https://iett.deno.dev';
+const { width } = Dimensions.get('window');
+
+export default function HatScreen() {
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+  });
+
+  const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<LineItem[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [selected, setSelected] = useState<LineItem | null>(null);
+  const [timetable, setTimetable] = useState<TimeTableItem[]>([]);
+  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
+  const [stations, setStations] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [direction, setDirection] = useState(0);
+
+  // Fetch suggestions when query changes
+  useEffect(() => {
+    if (query.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    
+    fetch(`${API_BASE}/api/line-suggestions?q=${encodeURIComponent(query)}`)
+      .then(r => r.json())
+      .then(data => {
+        setSuggestions(data);
+        setSelectedIndex(-1);
+      })
+      .catch(() => setSuggestions([]));
+  }, [query]);
+
+  const selectLine = (item: LineItem) => {
+    setSelected(item);
+    setQuery(item.line);
+    setSuggestions([]);
+    fetchDetails(item);
+  };
+
+  const fetchDetails = async (item: LineItem) => {
+    setLoading(true);
+    try {
+      const [ttRes, anRes] = await Promise.all([
+        fetch(`${API_BASE}/time-table`, { 
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({line: item.line})
+        }),
+        fetch(`${API_BASE}/announcements`, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({line: item.line})
+        }),
+      ]);
+      
+      const tt = await ttRes.json();
+      const an = await anRes.json();
+      
+      setTimetable(tt);
+      setAnnouncements(an);
+      loadStations(item.line, direction);
+    } catch (error) {
+      console.error('Error fetching details:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadStations = async (lineCode: string, dir: number) => {
+    try {
+      // Use direct GET request with route-stations as it's more reliable
+      const url = `${API_BASE}/api/route-stations?hatkod=${lineCode}&hatstart=${lineCode}&hatend=${lineCode}&langid=1`;
+      const res = await fetch(url, { method: 'GET' });
+      const text = await res.text();
+      
+      // Parse HTML response to extract station names
+      const regex = /<a[^>]*>([\s\S]*?)<\/a>/g;
+      let match;
+      const links = [];
+      
+      while ((match = regex.exec(text)) !== null) {
+        if (match[1] && match[1].trim()) {
+          // Convert HTML content to plain text using our utility function
+          let plainText = decodeHTMLEntities(match[1].trim());
+          
+          links.push(plainText);
+        }
+      }
+      
+      // Split stations based on direction
+      if (links.length > 0) {
+        const half = Math.ceil(links.length / 2);
+        const selectedStops = dir === 0 ? links.slice(0, half) : links.slice(half);
+        setStations(selectedStops);
+        console.log(`Loaded ${selectedStops.length} stations for direction ${dir}`);
+      } else {
+        console.log('No stations found in the response');
+        setStations([]);
+      }
+    } catch (error) {
+      console.error('Error loading stations:', error);
+      setStations([]);
+    }
+  };
+
+  const handleDirectionChange = (value: boolean) => {
+    const newDirection = value ? 1 : 0;
+    setDirection(newDirection);
+    if (selected) {
+      console.log(`Direction changed to ${newDirection}, reloading stations for ${selected.line}`);
+      loadStations(selected.line, newDirection);
+    }
+  };
+
+  const resetSearch = () => {
+    setSelected(null);
+    setQuery('');
+    setStations([]);
+    setTimetable([]);
+    setAnnouncements([]);
+  };
+
+  if (!fontsLoaded) return null;
+
+  return (
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={styles.contentContainer}
+      keyboardShouldPersistTaps='handled'
+    >
+      {!selected ? (
+        <View style={styles.searchContainer}>
+          <Text style={styles.title}>Hat Sorgulama</Text>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Hat kodu veya adı girin..."
+              placeholderTextColor="#ccc"
+              value={query}
+              onChangeText={setQuery}
+              autoCapitalize="characters"
+            />
+            {query.length > 0 && (
+              <TouchableOpacity 
+                style={styles.clearButton} 
+                onPress={() => setQuery('')}
+              >
+                <Ionicons name="close-circle" size={20} color="#6a6a8a" />
+              </TouchableOpacity>
+            )}
+          </View>
+          
+          {query.length >= 2 && (
+            <View style={styles.suggestionsContainer}>
+              {suggestions.length > 0 ? (
+                suggestions.map((item, index) => (
+                  <TouchableOpacity 
+                    key={`${item.line}-${index}`}
+                    style={[styles.suggestionItem, index === selectedIndex && styles.selectedItem]} 
+                    onPress={() => selectLine(item)}
+                  >
+                    <Text style={styles.lineCode}>{item.line}</Text>
+                    <Text style={styles.lineName}>{decodeHTMLEntities(item.name)}</Text>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                query.length >= 2 && <Text style={styles.noDataText}>Sonuç bulunamadı</Text>
+              )}
+            </View>
+          )}
+        </View>
+      ) : (
+        <View style={styles.resultContainer}>
+          {loading ? (
+            <ActivityIndicator size="large" color="#8a6cf1" style={styles.loader} />
+          ) : (
+            <>
+              <View style={styles.resultHeader}>
+                <View style={styles.lineInfoContainer}>
+                  <Text style={styles.lineCodeLarge}>{selected.line}</Text>
+                  <Text style={styles.lineNameLarge}>{decodeHTMLEntities(selected.name)}</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity 
+                style={styles.button} 
+                onPress={resetSearch}
+              >
+                <Text style={styles.buttonText}>Yeni Arama</Text>
+              </TouchableOpacity>
+              
+              {announcements.length > 0 && (
+                <TouchableOpacity 
+                  style={styles.announcementButton} 
+                  onPress={() => setModalVisible(true)}
+                >
+                  <Ionicons name="megaphone-outline" size={20} color="#fff" />
+                  <Text style={styles.announcementButtonText}>Hat Duyuruları</Text>
+                </TouchableOpacity>
+              )}
+              
+              <View style={styles.directionContainer}>
+                <Text style={styles.directionLabel}>Yön:</Text>
+                <View style={styles.directionSwitchContainer}>
+                  <Text style={[styles.directionText, direction === 0 ? styles.activeDirection : undefined]}>Gidiş</Text>
+                  <Switch
+                    trackColor={{ false: '#1a1a2e', true: '#1a1a2e' }}
+                    thumbColor={direction ? '#8a6cf1' : '#6a4cff'}
+                    ios_backgroundColor="#1a1a2e"
+                    onValueChange={handleDirectionChange}
+                    value={direction === 1}
+                    style={styles.directionSwitch}
+                  />
+                  <Text style={[styles.directionText, direction === 1 ? styles.activeDirection : undefined]}>Dönüş</Text>
+                </View>
+              </View>
+              
+              <View style={styles.contentCard}>
+                <Text style={styles.sectionTitle}>Sefer Saatleri</Text>
+                {timetable.length > 0 ? (
+                  <View style={styles.tableContainerWrapper}>
+                    <ScrollView style={styles.tableContainer} horizontal={false}>
+                      <View style={styles.tableHeader}>
+                        <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Saat</Text>
+                        <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Gün</Text>
+                        <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Hizmet</Text>
+                      </View>
+                      
+                      {timetable.map((item, index) => {
+                        const time = item.K_ORER_DTSAATGIDIS?.split(' ')[1]?.slice(0, 5) || 'N/A';
+                        const dayCode = item.K_ORER_DTSAATGUN || item.K_ORER_SGUNTIPI || '';
+                        const dayMap: Record<string, string> = { 'I': 'İş Günleri', 'C': 'Cumartesi', 'P': 'Pazar' };
+                        const dayName = dayCode in dayMap ? dayMap[dayCode] : (dayCode || 'N/A');
+                        const svcCode = item.K_ORER_DTSAATLVTIP || item.K_ORER_SSERVISTIPI || '';
+                        const svcMap: Record<string, string> = { '0': 'Normal', '1': 'Express', '2': 'Ekspres' };
+                        const svcName = svcCode in svcMap ? svcMap[svcCode] : (svcCode || 'N/A');
+                        
+                        return (
+                          <View key={index} style={[styles.tableRow, index % 2 === 1 && styles.tableRowAlt]}>
+                            <Text style={[styles.tableCell, { flex: 1 }]}>{time}</Text>
+                            <Text style={[styles.tableCell, { flex: 2 }]}>{dayName}</Text>
+                            <Text style={[styles.tableCell, { flex: 1 }]}>{svcName}</Text>
+                          </View>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                ) : (
+                  <Text style={styles.noDataText}>Bu hat için sefer saatleri bulunmamaktadır.</Text>
+                )}
+              </View>
+              
+              {stations.length > 0 && (
+                <View style={styles.contentCard}>
+                  <Text style={styles.sectionTitle}>Duraklar</Text>
+                  <View style={styles.stationContainer}>
+                    <View style={styles.stationLine} />
+                    {stations.map((station, index) => (
+                      <View key={index} style={styles.stationItem}>
+                        <View style={styles.stationDot} />
+                        <Text style={styles.stationName}>{decodeHTMLEntities(station)}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </>
+          )}
+        </View>
+      )}
+      
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.modalBackground}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Hat Duyuruları</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Text style={styles.modalClose}>×</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.announcementList}>
+              {announcements.length > 0 ? (
+                announcements.map((announcement, index) => {
+                  // Determine the severity level for styling
+                  const level = announcement.level || announcement.severity || '1';
+                  
+                  // Process content - split by '|' for multi-line display like in web version
+                  let contentLines = [];
+                  const content = decodeHTMLEntities(announcement.content || announcement.BILGI || 'İçerik belirtilmemiş');
+                  
+                  if (content.includes('|')) {
+                    contentLines = content.split('|').map(line => line.trim());
+                  } else if (content.length > 120) {
+                    // Split by sentences if content is long
+                    contentLines = content.split(/(?<=[.!?])\s+/).filter(line => line.trim().length > 0);
+                  } else {
+                    contentLines = [content];
+                  }
+                  
+                  return (
+                    <View 
+                      key={index} 
+                      style={[
+                        styles.announcementItem,
+                        level === '3' && styles.announcementItemCritical,
+                        level === '2' && styles.announcementItemWarning
+                      ]}
+                    >
+                      <Text style={styles.announcementDate}>
+                          {(announcement.date || announcement.VERI_SAATI) ? 
+                          new Date(announcement.date || announcement.VERI_SAATI || '').toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }) : 
+                          'Tarih belirtilmemiş'}
+                      </Text>
+                      {contentLines.map((line, lineIndex) => (
+                        <Text key={lineIndex} style={styles.announcementText}>
+                          {line}
+                        </Text>
+                      ))}
+                    </View>
+                  );
+                })
+              ) : (
+                <Text style={styles.noDataText}>Bu hat için duyuru bulunmamaktadır.</Text>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0d0d1a',
+  },
+  contentContainer: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  searchContainer: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(138, 108, 241, 0.1)',
+    padding: 24,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  title: {
+    fontSize: 24,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#8a6cf1',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  inputContainer: {
+    position: 'relative',
+    width: '100%',
+  },
+  input: {
+    backgroundColor: 'rgba(13, 13, 26, 0.6)',
+    borderWidth: 1,
+    borderColor: 'rgba(138, 108, 241, 0.2)',
+    borderRadius: 8,
+    padding: 14,
+    color: '#e0e0e0',
+    width: '100%',
+    fontFamily: 'Inter_400Regular',
+  },
+  clearButton: {
+    position: 'absolute',
+    right: 12,
+    top: 14,
+  },
+  suggestionsContainer: {
+    marginTop: 8,
+    backgroundColor: 'rgba(26, 26, 46, 0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(138, 108, 241, 0.2)',
+    borderRadius: 8,
+    maxHeight: 200,
+    width: '100%',
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(138, 108, 241, 0.1)',
+  },
+  selectedItem: {
+    backgroundColor: 'rgba(138, 108, 241, 0.2)',
+  },
+  lineCode: {
+    backgroundColor: 'rgba(138, 108, 241, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 4,
+    color: '#8a6cf1',
+    fontFamily: 'Inter_500Medium',
+    marginRight: 12,
+    minWidth: 50,
+    textAlign: 'center',
+  },
+  lineName: {
+    color: '#e0e0e0',
+    fontFamily: 'Inter_400Regular',
+    flex: 1,
+  },
+  resultContainer: {
+    width: '100%',
+  },
+  loader: {
+    marginTop: 40,
+  },
+  resultHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  lineInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  lineCodeLarge: {
+    backgroundColor: 'rgba(138, 108, 241, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    color: '#8a6cf1',
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 18,
+    marginRight: 12,
+  },
+  lineNameLarge: {
+    color: '#ffffff',
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 18,
+  },
+  backButton: {
+    backgroundColor: '#6a4cff',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  backButtonText: {
+    color: '#ffffff',
+    fontFamily: 'Inter_500Medium',
+  },
+  button: {
+    backgroundColor: '#6a4cff',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  buttonText: {
+    color: '#ffffff',
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+  },
+  announcementButton: {
+    backgroundColor: 'rgba(138, 108, 241, 0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(138, 108, 241, 0.3)',
+  },
+  announcementButtonText: {
+    color: '#ffffff',
+    fontFamily: 'Inter_500Medium',
+    marginLeft: 8,
+  },
+  directionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  directionLabel: {
+    color: '#8a6cf1',
+    fontFamily: 'Inter_500Medium',
+    marginRight: 12,
+  },
+  directionSwitchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(26, 26, 46, 0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  directionText: {
+    color: '#a0a0a0',
+    fontFamily: 'Inter_400Regular',
+    marginHorizontal: 8,
+  },
+  activeDirection: {
+    color: '#ffffff',
+    fontFamily: 'Inter_500Medium',
+  },
+  directionSwitch: {
+    marginHorizontal: 8,
+  },
+  contentCard: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(138, 108, 241, 0.1)',
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#8a6cf1',
+    marginBottom: 12,
+  },
+  tableContainerWrapper: {
+    borderWidth: 1,
+    borderColor: 'rgba(138, 108, 241, 0.1)',
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginVertical: 8,
+  },
+  tableContainer: {
+    maxHeight: 200,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(138, 108, 241, 0.1)',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  tableHeaderCell: {
+    color: '#8a6cf1',
+    fontFamily: 'Inter_600SemiBold',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(138, 108, 241, 0.05)',
+  },
+  tableRowAlt: {
+    backgroundColor: 'rgba(138, 108, 241, 0.05)',
+  },
+  tableCell: {
+    color: '#e0e0e0',
+    fontFamily: 'Inter_400Regular',
+  },
+  stationContainer: {
+    position: 'relative',
+    paddingLeft: 20,
+  },
+  stationLine: {
+    position: 'absolute',
+    left: 10,
+    top: 10,
+    bottom: 10,
+    width: 2,
+    backgroundColor: '#8a6cf1',
+    zIndex: 1,
+  },
+  stationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    zIndex: 2,
+  },
+  stationDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#8a6cf1',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    marginRight: 16,
+    zIndex: 3,
+  },
+  stationName: {
+    color: '#e0e0e0',
+    fontFamily: 'Inter_500Medium',
+    fontSize: 15,
+  },
+  noDataText: {
+    color: '#a0a0a0',
+    fontFamily: 'Inter_400Regular',
+    textAlign: 'center',
+    marginVertical: 16,
+  },
+  noResultsText: {
+    color: '#a0a0a0',
+    fontFamily: 'Inter_400Regular',
+    textAlign: 'center',
+    marginVertical: 16,
+  },
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalContent: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: 16,
+    width: '100%',
+    maxHeight: '80%',
+    borderWidth: 1,
+    borderColor: 'rgba(138, 108, 241, 0.2)',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(138, 108, 241, 0.1)',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#ffffff',
+  },
+  modalClose: {
+    fontSize: 24,
+    color: '#a0a0a0',
+    fontWeight: 'bold',
+  },
+  announcementList: {
+    padding: 16,
+  },
+  announcementItem: {
+    backgroundColor: 'rgba(138, 108, 241, 0.1)',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#8a6cf1',
+  },
+  announcementItemWarning: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderLeftColor: '#f59e0b',
+  },
+  announcementItemCritical: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderLeftColor: '#ef4444',
+  },
+  announcementDate: {
+    color: '#a0a0a0',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  announcementText: {
+    color: '#e0e0e0',
+    fontFamily: 'Inter_400Regular',
+  },
+});

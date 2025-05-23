@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>iettnext</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            height: 100%; 
+            font-family: 'Inter', sans-serif;
+            background-color: #0d0d1a;
+            color: #e0e0e0;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #2a2a4e 100%);
+            color: #8a6cf1;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .button {
+            background: linear-gradient(135deg, #6a4cff 0%, #8a6cf1 100%);
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(106, 76, 255, 0.1);
+        }
+        .button:hover {
+            background: linear-gradient(135deg, #8a6cf1 0%, #9a7cf2 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(106, 76, 255, 0.2);
+        }
+        #map { 
+            height: calc(100vh - 120px); 
+            width: 100%; 
+        }
+        #layer-menu {
+            position: absolute;
+            top: 140px;
+            right: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        #layer-menu label {
+            display: block;
+            margin: 5px 0;
+        }
+        .marker-cluster div {
+            background-color: rgba(77, 77, 77, 0.8);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <nav class="bg-gradient-to-b from-[#1a1a2e] to-[#252542] p-4 fixed top-0 w-full z-20">
+        <div class="flex justify-between items-center">
+            <a href="/" class="text-2xl font-bold text-[#8a6cf1]">iettnext</a>
+            <div class="flex space-x-4">
+                <a href="/durak" class="text-gray-300 hover:text-white">Durak</a>
+                <a href="/hat" class="text-gray-300 hover:text-white">Hat</a>
+                <a href="/arac" class="text-gray-300 hover:text-white">Araç</a>
+                <a href="/harita" class="text-gray-300 hover:text-white">Harita</a>
+                <a href="/eski" class="text-gray-300 hover:text-white">Eski Hatlar</a>
+                <a href="/about" class="text-white font-medium">Hakkında</a>
+            </div>
+        </div>
+    </nav>
+    <div class="pt-20"></div>
+    <div id="map"></div>
+    <div id="layer-menu">
+        <label>
+            <input type="checkbox" id="vehicles-toggle" checked> 
+            Araçlar
+        </label>
+        <label>
+            <input type="checkbox" id="stations-toggle"> 
+            Duraklar
+        </label>
+        <label>
+            <input type="checkbox" id="garages-toggle"> 
+            Garajlar
+        </label>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/gh/Rednexie/rednexie.github.io@main/cdn/noconsole.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initialize map centered on Istanbul
+        const map = L.map('map').setView([41.0161, 28.9944], 10);
+        
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: ' OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Create layer groups
+        const vehicleMarkers = L.markerClusterGroup({
+            iconCreateFunction: function(cluster) {
+                return L.divIcon({
+                    html: `<div><span>${cluster.getChildCount()}</span></div>`,
+                    className: 'marker-cluster marker-cluster-medium',
+                    iconSize: new L.Point(40, 40)
+                });
+            }
+        });
+        const stationMarkers = L.layerGroup();
+        const garageMarkers = L.layerGroup();
+
+        // Custom icons
+        const vehicleIcon = L.divIcon({
+            className: 'vehicle-marker',
+            html: `<div style="background-color: #4a90e2; width: 10px; height: 10px; border-radius: 50%;"></div>`,
+            iconSize: [10, 10]
+        });
+
+        const stationIcon = L.divIcon({
+            className: 'station-marker',
+            html: `<div style="background-color: #e74c3c; width: 8px; height: 8px; border-radius: 50%;"></div>`,
+            iconSize: [8, 8]
+        });
+
+        const garageIcon = L.divIcon({
+            className: 'garage-marker',
+            html: `<div style="background-color: #2ecc71; width: 12px; height: 12px; border-radius: 50%;"></div>`,
+            iconSize: [12, 12]
+        });
+
+        // Cache for line data
+        const lineDataCache = new Map();
+
+        // Function to fetch and update map data
+        async function updateMapData(fetchStations = false, fetchGarages = false) {
+            // Clear existing markers
+            vehicleMarkers.clearLayers();
+            stationMarkers.clearLayers();
+            garageMarkers.clearLayers();
+
+            try {
+                // Fetch and process vehicles
+                const vehiclesResponse = await fetch('/api/vehicles');
+                const vehiclesData = await vehiclesResponse.json();
+                
+                const uniqueVehicles = new Map();
+                vehiclesData.vehicles.forEach(vehicle => {
+                    const key = `${vehicle.KapiNo}`;
+                    if (!uniqueVehicles.has(key) || 
+                        new Date(vehicle.Saat) > new Date(uniqueVehicles.get(key).Saat)) {
+                        uniqueVehicles.set(key, vehicle);
+                    }
+                });
+
+                uniqueVehicles.forEach(vehicle => {
+                    const marker = L.marker(
+                        [vehicle.coordinates[1], vehicle.coordinates[0]], 
+                        { icon: vehicleIcon }
+                    ).bindPopup(`
+                        <b>Kapı No:</b> ${vehicle.KapiNo}<br>
+                        <b>Plaka:</b> ${vehicle.Plaka}<br>
+                        <b>Garaj:</b> ${vehicle.Garaj}<br>
+                        <b>Hız:</b> ${(vehicle.hiz == null || vehicle.hiz === 0) ? 0 : vehicle.hiz} km/s<br>
+                        <b>Son Güncelleme:</b> ${vehicle.Saat}
+                    `);
+
+                    marker.on('click', async () => {
+                        try {
+                            if (lineDataCache.has(vehicle.KapiNo)) {
+                                const lineData = lineDataCache.get(vehicle.KapiNo);
+                                const lineCode = lineData.line ? lineData.line.split(' ')[0] : '-';
+                                marker.bindPopup(`
+                                    <b>Kapı No:</b> ${vehicle.KapiNo}<br>
+                                    <b>Plaka:</b> ${vehicle.Plaka}<br>
+                                    <b>Garaj:</b> ${vehicle.Garaj}<br>
+                                    <b>Hız:</b> ${(vehicle.hiz == null || vehicle.hiz === 0) ? 0 : vehicle.hiz} km/s<br>
+                                    <b>Son Güncelleme:</b> ${vehicle.Saat}<br>
+                                    <b>Hat:</b> ${lineCode}
+                                `).openPopup();
+                            } else {
+                                // POST request to /api/vehicle-line with kapino
+                                const lineResponse = await fetch('/api/vehicle-line', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ kapino: vehicle.KapiNo })
+                                });
+                                const lineData = await lineResponse.json();
+                                if (lineData.line) {
+                                    lineDataCache.set(vehicle.KapiNo, lineData);
+                                    const lineCode = lineData.line.split(' ')[0];
+                                    marker.bindPopup(`
+                                        <b>Kapı No:</b> ${vehicle.KapiNo}<br>
+                                        <b>Plaka:</b> ${vehicle.Plaka}<br>
+                                        <b>Garaj:</b> ${vehicle.Garaj}<br>
+                                        <b>Hız:</b> ${(vehicle.hiz == null || vehicle.hiz === 0) ? 0 : vehicle.hiz} km/s<br>
+                                        <b>Son Güncelleme:</b> ${vehicle.Saat}<br>
+                                        <b>Hat:</b> ${lineCode}
+                                    `).openPopup();
+                                } else {
+                                    marker.bindPopup(`
+                                        <b>Kapı No:</b> ${vehicle.KapiNo}<br>
+                                        <b>Plaka:</b> ${vehicle.Plaka}<br>
+                                        <b>Garaj:</b> ${vehicle.Garaj}<br>
+                                        <b>Hız:</b> ${(vehicle.hiz == null || vehicle.hiz === 0) ? 0 : vehicle.hiz} km/s<br>
+                                        <b>Son Güncelleme:</b> ${vehicle.Saat}<br>
+                                        <b>Hat:</b> Bilgi yok
+                                    `).openPopup();
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Error fetching vehicle line data:', error);
+                        }
+                    });
+
+                    vehicleMarkers.addLayer(marker);
+                });
+
+                // Fetch and process stations only if requested
+                if (fetchStations) {
+                    const stationsResponse = await fetch('/api/stations');
+                    const stationsData = await stationsResponse.json();
+                    stationsData.stations.forEach(station => {
+                        const marker = L.marker(
+                            [station.coordinates[1], station.coordinates[0]], 
+                            { icon: stationIcon }
+                        ).bindPopup(`
+                            <b>Durak Adı:</b> ${station.SDURAKADI}<br>
+                            <b>Durak Kodu:</b> ${station.SDURAKKODU}<br>
+                            <b>İlçe:</b> ${station.ILCEADI}<br>
+                            <b>Yön:</b> ${station.SYON}<br>
+                            ${station.AKILLI === '1' ? '<b>Akıllı Durak</b>' : ''}
+                        `);
+                        stationMarkers.addLayer(marker);
+                    });
+                }
+
+                // Fetch and process garages only if requested
+                if (fetchGarages) {
+                    const garagesResponse = await fetch('/api/garages');
+                    const garagesData = await garagesResponse.json();
+                    garagesData.garages.forEach(garage => {
+                        const marker = L.marker(
+                            [garage.coordinates[1], garage.coordinates[0]], 
+                            { icon: garageIcon }
+                        ).bindPopup(`
+                            <b>Garaj Adı:</b> ${garage.GARAJ_ADI}<br>
+                            <b>Garaj Kodu:</b> ${garage.GARAJ_KODU}
+                        `);
+                        garageMarkers.addLayer(marker);
+                    });
+                }
+
+                // Update layer visibility based on toggle states
+                if (document.getElementById('vehicles-toggle').checked) {
+                    map.addLayer(vehicleMarkers);
+                }
+                if (document.getElementById('stations-toggle').checked) {
+                    map.addLayer(stationMarkers);
+                }
+                if (document.getElementById('garages-toggle').checked) {
+                    map.addLayer(garageMarkers);
+                }
+
+            } catch (error) {
+                console.error('Error updating map data:', error);
+            }
+        }
+
+        // Initial data load (vehicles only)
+        updateMapData(false, false);
+
+        // Refresh data every minute (only refresh visible layers)
+        setInterval(() => {
+            updateMapData(
+                document.getElementById('stations-toggle').checked,
+                document.getElementById('garages-toggle').checked
+            );
+        }, 60000);
+
+        // Layer toggle event listeners
+        document.getElementById('vehicles-toggle').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                map.addLayer(vehicleMarkers);
+            } else {
+                map.removeLayer(vehicleMarkers);
+            }
+        });
+
+        document.getElementById('stations-toggle').addEventListener('change', async (e) => {
+            if (e.target.checked) {
+                // Only fetch stations if not already loaded
+                if (stationMarkers.getLayers().length === 0) {
+                    await updateMapData(true, document.getElementById('garages-toggle').checked);
+                }
+                map.addLayer(stationMarkers);
+            } else {
+                map.removeLayer(stationMarkers);
+            }
+        });
+
+        document.getElementById('garages-toggle').addEventListener('change', async (e) => {
+            if (e.target.checked) {
+                // Only fetch garages if not already loaded
+                if (garageMarkers.getLayers().length === 0) {
+                    await updateMapData(document.getElementById('stations-toggle').checked, true);
+                }
+                map.addLayer(garageMarkers);
+            } else {
+                map.removeLayer(garageMarkers);
+            }
+        });
+    });
+    </script>
+</body>
+</html>
