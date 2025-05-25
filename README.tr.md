@@ -1,67 +1,94 @@
-# betteriett – İstanbul Toplu Taşıma Yardımcısı
+# iettnext – İstanbul Toplu Taşıma Asistanı
 
-betteriett, İstanbul'un toplu taşıma sistemini daha erişilebilir, bilgilendirici ve kullanıcı dostu hale getirmek için Expo ve React Native ile geliştirilmiş, açık kaynaklı ve özelliklerle dolu bir mobil uygulamadır. Aşağıda uygulamanın temel özelliklerinin detaylı bir açıklamasını ve bu özelliklerin kullanıcılara nasıl fayda sağladığını bulabilirsiniz.
+[🇬🇧 English](./README.md)
+
+## 📱 Uygulama Sayfaları
+
+### 1. **Araç Arama Sayfası**
+- Plaka/kapı kodu ile arama
+- Gerçek zamanlı araç takibi
+- "Depar" (kalkış) durumu göstergesi
+- Hat bilgisi ve güzergah detayları
+
+### 2. **Durak Arama Sayfası**
+- Akıllı arama önerileri
+- Gerçek zamanlı varış saatleri
+- Detaylı araç bilgileri (model, hız, özellikler)
+- Özellikler (İBB WiFi, USB şarj, engelli erişimi, bisiklet erişimi, "depar" hattı vb.)
+
+### 3. **Hat Arama Sayfası**
+- Akıllı arama önerileri
+- Güzergah bilgisi ve tarife
+- Hat duyuruları (gecikmeler, değişiklikler)
+
+### 4. **Harita Sayfası (Yakında)**
+- Canlı araç konumları
+- Durak ve gar lokasyonları
+- Özelleştirilebilir katmanlar
+
+### 5. **Eski Hatlar Arşivi**
+- Kaldırılan hat bilgileri
+- Tarihi güzergah verileri
+- Ulaşım tarihi referansı
 
 ---
 
-## 🚀 Temel Özellikler
+## 📸 Ekran Görüntüleri
 
-### 1. **Araç Sorgulama**
-- **Plaka veya Kapı Kodu ile Arama:** Plaka veya araç kapı kodunu girerek İETT otobüslerini anında sorgulayın.
-- **Canlı Durum:** Seçilen araca ait anlık konum, hız, garaj ve son güncelleme zamanı gibi bilgileri görüntüleyin.
-- **Hat Bilgisi:** Her araç için güzergâh (hat) bilgisini alın ve görüntüleyin.
-- **Hata Yönetimi:** Geçersiz giriş veya sunucuya ulaşılamadığında kullanıcı dostu hata mesajları gösterilir.
+### Ana Sayfa
+[![Ana Sayfa](https://i.imgur.com/PesYvfS.png)](https://imgur.com/a/PesYvfS)
 
-### 2. **Durak Sorgulama**
-- **Akıllı Öneriler:** Yazdıkça, kod, ad ve yön bilgisiyle eşleşen duraklar önerilir.
-- **Varış & Saatler:** Seçilen durakta yaklaşan tüm otobüsleri, tahmini varış zamanlarını, hat ve araç detaylarını görün.
-- **Gerçek Zamanlı Yenileme:** Tek dokunuşla varış verilerini kolayca yenileyin.
-- **Otobüs Yoksa Bilgilendirme:** Şu anda durakta otobüs yoksa, kullanıcıya net bir mesaj gösterilir.
-- **Erişilebilirlik & Donanımlar:** Otobüslerin tekerlekli sandalye erişimi, bisiklet, WiFi, USB şarj ve klima desteği olup olmadığı ikonlarla gösterilir.
-- **Harita Entegrasyonu:** Aracın son konumunu Google Haritalar’da açmak için dokunabilirsiniz.
+### Araç Arama
+[![Araç Arama 1](https://i.imgur.com/XJq8yCv.png)](https://imgur.com/a/XJq8yCv)
+[![Araç Arama 2](https://i.imgur.com/xj15laG.png)](https://imgur.com/a/xj15laG)
+[![Araç Arama 3](https://i.imgur.com/JL0YDOH.png)](https://imgur.com/a/JL0YDOH)
 
-### 3. **Etkileşimli Harita**
-- **Canlı Araç Takibi:** Tüm aktif İETT araçlarını harita üzerinde anlık olarak görüntüleyin.
-- **Durak & Garaj Katmanları:** Harita görünümünü özelleştirmek için durak ve garaj katmanlarını açıp kapatın.
-- **Detaylı Açılır Pencereler:** Herhangi bir işarete (araç, durak veya garaj) dokunarak detaylı bilgi alın.
-- **Bölge Odaklı:** Harita İstanbul merkezli açılır, kolay yakınlaştırma ve kaydırma kontrolleri sunar.
+### Durak Arama
+[![Durak Arama 1](https://i.imgur.com/RTuBLwv.png)](https://imgur.com/a/RTuBLwv)
+[![Durak Arama 2](https://i.imgur.com/IhsdLJG.png)](https://imgur.com/a/IhsdLJG)
 
-### 4. **Modern Sekmeli Gezinme**
-- **Dosya Tabanlı Yönlendirme:** Ana Sayfa, Araç, Durak ve Harita sekmeleri arasında temiz ve ölçeklenebilir gezinme için Expo Router kullanılır.
-- **Özel Sekme Çubuğu:** Animasyonlu, haptik destekli sekme butonları ve bulanık arka plan ile yerel bir his sağlar.
-- **Temalı Arayüz:** Açık ve koyu mod desteği, yumuşak geçişler ve özel renk şemaları sunar.
+### Hat Arama
+[![Hat Arama 1](https://i.imgur.com/0C3pXZg.png)](https://imgur.com/a/0C3pXZg)
+[![Hat Arama 2](https://i.imgur.com/hXgxtVd.png)](https://imgur.com/a/hXgxtVd)
+[![Hat Arama 3](https://i.imgur.com/nLcrr3W.png)](https://imgur.com/a/nLcrr3W)
+[![Hat Arama 4](https://i.imgur.com/iAHlsGR.png)](https://imgur.com/a/iAHlsGR)
 
-### 5. **Performans & Kullanıcı Deneyimi**
-- **Optimizasyonlu Yükleme:** Yazı tipleri ve veriler asenkron olarak yüklenir, hızlı ve akıcı bir başlangıç sağlar.
-- **Duyarlı Tasarım:** Tüm ekran boyutları ve yönelimlerine uyumlu tasarım.
-- **Erişilebilirlik:** Net ikonlar, yüksek kontrastlı renkler ve yardımcı teknolojilere destek.
-- **Hata Geri Bildirimi:** Tüm ağ ve giriş hataları kullanıcıya anlaşılır şekilde iletilir.
+---
 
-### 6. **Yeniden Kullanılabilir Bileşenler & Hooklar**
-- **Bileşen Kütüphanesi:** Kolay bakım için Collapsible panel, ThemedText ve HapticTab gibi modüler UI bileşenleri.
-- **Özel Hooklar:** Tema yönetimi ve renk şeması algılama için özel React hook’ları.
+## ✨ Temel Özellikler
 
-## 📱 Özelliklerin Kullanıcıya Faydası
-- **Önceden Planla:** Otobüsünüzün ne zaman geleceğini ve harita üzerindeki yerini anında öğrenin.
-- **Yolunuzu Bulun:** Herhangi bir durağı veya aracı hızla bulun, anında yol tarifi alın.
-- **Bilgili Kalın:** Her otobüs için donanım ve erişilebilirlik bilgilerine ulaşın.
-- **Keyifle Kullanın:** Modern, duyarlı ve estetik bir uygulama deneyimi yaşayın.
+### 🛡️ Gizlilik & Performans
+- Veri toplama yok
+- Minimum izin gereksinimi
+- Düşük veri kullanımı
+- Hızlı açılış ve sorunsuz kullanım
+
+### 🔍 Akıllı Arama
+- Anında öneriler
+- Bulanık eşleştirme
+- Son aramalar hafızası
+
+### 🚌 Anlık Bilgi
+- Canlı araç konumları
+- Kesin varış saatleri
+- Kalkış durum göstergeleri
+
+### 🗺️ Kapsamlı Veri
+- Güncel hatlar ve araçlar
+- Tarihi/kaldırılan hatlar
+- Durak özellik detayları
 
 ---
 
 ## 🏗️ Kullanılan Teknolojiler
-- **React Native & Expo:** Çapraz platform mobil geliştirme
-- **expo-router:** Dosya tabanlı yönlendirme
-- **react-native-maps:** Etkileşimli haritalar
-- **@expo/vector-icons:** Zengin ikon seti
-- **Özel Hooklar & Bileşenler:** Modüler ve sürdürülebilir kod
+- **React Native & Expo**
+- **expo-router**
+- **react-native-maps**
+- **@expo/vector-icons**
 
 ---
 
 ## 🙏 Teşekkürler
-- Açık veri için İstanbul Elektrik Tramvay ve Tünel İşletmeleri (İETT)
-- Expo ve React Native toplulukları
-
----
-
-*Ekran görüntüleri, katkı rehberi ve daha fazlası için lütfen proje dokümantasyonuna bakın veya bir issue açın!*
+- İstanbul Elektrik Tramvay ve Tünel (İETT) açık veri için
+- Expo ve React Native ekipleri
+- Github ve Deno barındırma için
