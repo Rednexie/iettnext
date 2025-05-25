@@ -1,2 +1,5 @@
 durak.tsx - the user should be able to click enter to just enter the line, without having to click on the suggestion
 
+harita.tsx - add a link to the website, where this feature is working
+
+hat.tsx - fetch the departure times directly from iett.istanbul

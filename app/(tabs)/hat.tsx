@@ -66,6 +66,42 @@ export default function HatScreen() {
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [direction, setDirection] = useState(0);
+  const [activeTab, setActiveTab] = useState<'times'|'stations'>('times');
+
+  // Parse station anchor HTML into text entries
+  const parseAnchors = (html: string): string[] => {
+    const anchorRegex = /<a[^>]*>([\s\S]*?)<\/a>/g;
+    const result: string[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = anchorRegex.exec(html)) !== null) {
+      const txt = decodeHTMLEntities(m[1].trim()).replace(/<[^>]+>/g, '').trim();
+      if (txt) result.push(txt);
+    }
+    return result;
+  };
+
+  // Load stations for lineCode and direction
+  const loadStations = async (lineCode: string, dir: number) => {
+    try {
+      const url = `${API_BASE}/api/route-stations?hatkod=${lineCode}&hatstart=x&hatend=y&langid=1`;
+      const res = await fetch(url);
+      const text = await res.text();
+      const allLinks = parseAnchors(text);
+      const restartIdx = allLinks.findIndex((s, i) => i > 0 && /^\s*1\./.test(s));
+      const splitIndex = restartIdx !== -1 ? restartIdx : Math.ceil(allLinks.length / 2);
+      const forwardLinks = allLinks.slice(0, splitIndex);
+      const backwardLinks = allLinks.slice(splitIndex);
+      setStations(dir === 0 ? forwardLinks : backwardLinks);
+    } catch (e) {
+      console.error('Error loading stations:', e);
+      setStations([]);
+    }
+  };
+
+  // Reload stations when selected line or direction changes
+  useEffect(() => {
+    if (selected) loadStations(selected.line, direction);
+  }, [selected, direction]);
 
   // Debounce and cancel previous fetches for suggestions
   const debounceTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -139,57 +175,10 @@ export default function HatScreen() {
       
       setTimetable(tt);
       setAnnouncements(an);
-      loadStations(item.line, direction);
     } catch (error) {
       console.error('Error fetching details:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadStations = async (lineCode: string, dir: number) => {
-    try {
-      // Use direct GET request with route-stations as it's more reliable
-      const url = `${API_BASE}/api/route-stations?hatkod=${lineCode}&hatstart=${lineCode}&hatend=${lineCode}&langid=1`;
-      const res = await fetch(url, { method: 'GET' });
-      const text = await res.text();
-      
-      // Parse HTML response to extract station names
-      const regex = /<a[^>]*>([\s\S]*?)<\/a>/g;
-      let match;
-      const links = [];
-      
-      while ((match = regex.exec(text)) !== null) {
-        if (match[1] && match[1].trim()) {
-          // Convert HTML content to plain text using our utility function
-          let plainText = decodeHTMLEntities(match[1].trim());
-          
-          links.push(plainText);
-        }
-      }
-      
-      // Split stations based on direction
-      if (links.length > 0) {
-        const half = Math.ceil(links.length / 2);
-        const selectedStops = dir === 0 ? links.slice(0, half) : links.slice(half);
-        setStations(selectedStops);
-        console.log(`Loaded ${selectedStops.length} stations for direction ${dir}`);
-      } else {
-        console.log('No stations found in the response');
-        setStations([]);
-      }
-    } catch (error) {
-      console.error('Error loading stations:', error);
-      setStations([]);
-    }
-  };
-
-  const handleDirectionChange = (value: boolean) => {
-    const newDirection = value ? 1 : 0;
-    setDirection(newDirection);
-    if (selected) {
-      console.log(`Direction changed to ${newDirection}, reloading stations for ${selected.line}`);
-      loadStations(selected.line, newDirection);
     }
   };
 
@@ -253,25 +242,36 @@ export default function HatScreen() {
           )}
         </View>
       ) : (
-        <View style={styles.resultContainer}>
+        <View style={[styles.resultContainer, { paddingTop: 16 }]}>
           {loading ? (
             <ActivityIndicator size="large" color="#8a6cf1" style={styles.loader} />
           ) : (
-            <>
+            <>  
+              <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                <TouchableOpacity style={styles.button} onPress={resetSearch}>
+                  <Text style={styles.buttonText}>Yeni Arama</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.tabContainer}>
+                <TouchableOpacity
+                  style={[styles.tabItem, activeTab === 'times' && styles.tabItemActive]}
+                  onPress={() => setActiveTab('times')}
+                >
+                  <Text style={[styles.tabItemText, activeTab === 'times' && styles.activeTabItem]}>Sefer Saatleri</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.tabItem, activeTab === 'stations' && styles.tabItemActive]}
+                  onPress={() => setActiveTab('stations')}
+                >
+                  <Text style={[styles.tabItemText, activeTab === 'stations' && styles.activeTabItem]}>Duraklar</Text>
+                </TouchableOpacity>
+              </View>
               <View style={styles.resultHeader}>
                 <View style={styles.lineInfoContainer}>
                   <Text style={styles.lineCodeLarge}>{selected.line}</Text>
                   <Text style={styles.lineNameLarge}>{decodeHTMLEntities(selected.name)}</Text>
                 </View>
               </View>
-
-              <TouchableOpacity 
-                style={styles.button} 
-                onPress={resetSearch}
-              >
-                <Text style={styles.buttonText}>Yeni Arama</Text>
-              </TouchableOpacity>
-              
               {announcements.length > 0 && (
                 <TouchableOpacity 
                   style={styles.announcementButton} 
@@ -281,34 +281,16 @@ export default function HatScreen() {
                   <Text style={styles.announcementButtonText}>Hat Duyuruları</Text>
                 </TouchableOpacity>
               )}
-              
-              <View style={styles.directionContainer}>
-                <Text style={styles.directionLabel}>Yön:</Text>
-                <View style={styles.directionSwitchContainer}>
-                  <Text style={[styles.directionText, direction === 0 ? styles.activeDirection : undefined]}>Gidiş</Text>
-                  <Switch
-                    trackColor={{ false: '#1a1a2e', true: '#1a1a2e' }}
-                    thumbColor={direction ? '#8a6cf1' : '#6a4cff'}
-                    ios_backgroundColor="#1a1a2e"
-                    onValueChange={handleDirectionChange}
-                    value={direction === 1}
-                    style={styles.directionSwitch}
-                  />
-                  <Text style={[styles.directionText, direction === 1 ? styles.activeDirection : undefined]}>Dönüş</Text>
-                </View>
-              </View>
-              
-              <View style={styles.contentCard}>
-                <Text style={styles.sectionTitle}>Sefer Saatleri</Text>
-                {timetable.length > 0 ? (
-                  <View style={styles.tableContainerWrapper}>
-                    <ScrollView style={styles.tableContainer} horizontal={false}>
+              {activeTab === 'times' ? (
+                <View style={styles.contentCard}>
+                  <Text style={styles.sectionTitle}>Sefer Saatleri</Text>
+                  {timetable.length > 0 ? (
+                    <>  
                       <View style={styles.tableHeader}>
                         <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Saat</Text>
                         <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Gün</Text>
                         <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Hizmet</Text>
                       </View>
-                      
                       {timetable.map((item, index) => {
                         const time = item.K_ORER_DTSAATGIDIS?.split(' ')[1]?.slice(0, 5) || 'N/A';
                         const dayCode = item.K_ORER_DTSAATGUN || item.K_ORER_SGUNTIPI || '';
@@ -326,16 +308,30 @@ export default function HatScreen() {
                           </View>
                         );
                       })}
-                    </ScrollView>
-                  </View>
-                ) : (
-                  <Text style={styles.noDataText}>Bu hat için sefer saatleri bulunmamaktadır.</Text>
-                )}
-              </View>
-              
-              {stations.length > 0 && (
+                    </>
+                  ) : (
+                    <Text style={styles.noDataText}>Bu hat için sefer saatleri bulunmamaktadır.</Text>
+                  )}
+                </View>
+              ) : (
                 <View style={styles.contentCard}>
                   <Text style={styles.sectionTitle}>Duraklar</Text>
+                  {/* Direction switch for Duraklar */}
+                  <View style={styles.directionContainer}>
+                    <Text style={styles.directionLabel}>Yön:</Text>
+                    <View style={styles.directionSwitchContainer}>
+                      <Text style={[styles.directionText, direction === 0 ? styles.activeDirection : {}]}>Gidiş</Text>
+                      <Switch
+                        trackColor={{ false: '#1a1a2e', true: '#1a1a2e' }}
+                        thumbColor={direction ? '#8a6cf1' : '#6a4cff'}
+                        ios_backgroundColor="#1a1a2e"
+                        onValueChange={(val) => setDirection(val ? 1 : 0)}
+                        value={direction === 1}
+                        style={styles.directionSwitch}
+                      />
+                      <Text style={[styles.directionText, direction === 1 ? styles.activeDirection : {}]}>Dönüş</Text>
+                    </View>
+                  </View>
                   <View style={styles.stationContainer}>
                     <View style={styles.stationLine} />
                     {stations.map((station, index) => (
@@ -573,36 +569,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
     marginLeft: 8,
   },
-  directionContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  directionLabel: {
-    color: '#8a6cf1',
-    fontFamily: 'Inter_500Medium',
-    marginRight: 12,
-  },
-  directionSwitchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(26, 26, 46, 0.5)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  directionText: {
-    color: '#a0a0a0',
-    fontFamily: 'Inter_400Regular',
-    marginHorizontal: 8,
-  },
-  activeDirection: {
-    color: '#ffffff',
-    fontFamily: 'Inter_500Medium',
-  },
-  directionSwitch: {
-    marginHorizontal: 8,
-  },
   contentCard: {
     backgroundColor: '#1a1a2e',
     borderRadius: 16,
@@ -620,16 +586,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     color: '#8a6cf1',
     marginBottom: 12,
-  },
-  tableContainerWrapper: {
-    borderWidth: 1,
-    borderColor: 'rgba(138, 108, 241, 0.1)',
-    borderRadius: 8,
-    overflow: 'hidden',
-    marginVertical: 8,
-  },
-  tableContainer: {
-    maxHeight: 200,
   },
   tableHeader: {
     flexDirection: 'row',
@@ -763,5 +719,56 @@ const styles = StyleSheet.create({
   announcementText: {
     color: '#e0e0e0',
     fontFamily: 'Inter_400Regular',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+  },
+  tabItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  tabItemActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#8a6cf1',
+  },
+  tabItemText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+    color: '#a0a0a0',
+  },
+  activeTabItem: {
+    color: '#ffffff',
+  },
+  directionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  directionLabel: {
+    color: '#8a6cf1',
+    fontFamily: 'Inter_500Medium',
+    marginRight: 12,
+  },
+  directionSwitchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(26, 26, 46, 0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  directionText: {
+    color: '#a0a0a0',
+    fontFamily: 'Inter_400Regular',
+    marginHorizontal: 8,
+  },
+  activeDirection: {
+    color: '#ffffff',
+    fontFamily: 'Inter_500Medium',
+  },
+  directionSwitch: {
+    marginHorizontal: 8,
   },
 });
