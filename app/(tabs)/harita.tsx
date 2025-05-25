@@ -1,6 +1,6 @@
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Linking } from 'react-native';
 
 export default function HaritaScreen() {
   const [fontsLoaded] = useFonts({
@@ -15,8 +15,14 @@ export default function HaritaScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Canlı Otobüs Haritası</Text>
       <Text style={styles.message}>
-        Bu özellik şu anda mevcut değil.
+        Bu özellik web sitemizde mevcut:
       </Text>
+      <TouchableOpacity 
+        style={styles.linkButton}
+        onPress={() => Linking.openURL('https://iett.deno.dev/harita')}
+      >
+        <Text style={styles.linkText}>Haritayı Görüntüle</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -39,6 +45,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter_400Regular',
     color: '#e0e0e0',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  linkButton: {
+    backgroundColor: '#8a6cf1',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  linkText: {
+    color: 'white',
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
     textAlign: 'center',
   },
 });

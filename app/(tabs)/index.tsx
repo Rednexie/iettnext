@@ -39,7 +39,7 @@ export default function HomeScreen() {
         {/* Durak Sorgulama Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Durak Sorgulama</Text>
-          <Text style={styles.cardDesc}>Durak bilgilerini ve geçen hatları sorgulayın</Text>
+          <Text style={styles.cardDesc}>Durağa gelmekte olan otobüslerin ayrıntılı bilgisini görüntüleyin</Text>
           <TouchableOpacity style={styles.button} onPress={() => router.push('/durak')}>
             <Text style={styles.buttonText}>Duraklar</Text>
           </TouchableOpacity>
@@ -63,7 +63,7 @@ export default function HomeScreen() {
         {/* GitHub Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>GitHub</Text>
-          <Text style={styles.cardDesc}>Android Uygulamasının kaynak kodunu görüntüleyin</Text>
+          <Text style={styles.cardDesc}>Uygulamanın kaynak kodunu görüntüleyin</Text>
           <TouchableOpacity style={styles.button} onPress={() => Linking.openURL('https://github.com/Rednexie/iettnext')}>
             <Text style={styles.buttonText}>GitHub</Text>
           </TouchableOpacity>

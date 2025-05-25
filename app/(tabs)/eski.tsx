@@ -6,9 +6,11 @@ import {
   useFonts,
 } from '@expo-google-fonts/inter';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -27,8 +29,8 @@ interface OldLine {
 }
 
 const API_URL = 'https://iett.deno.dev/api/oldlines';
-const CACHE_KEY = 'oldlines_data';
-const CACHE_TIMESTAMP_KEY = 'oldlines_timestamp';
+const CACHE_KEY = 'ol';
+const CACHE_TIMESTAMP_KEY = 'olt';
 const CACHE_VALIDITY_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export default function EskiHatlarScreen() {
@@ -42,6 +44,7 @@ export default function EskiHatlarScreen() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+  const inputRef = useRef<TextInput>(null); // Ref for the TextInput
 
   useEffect(() => {
     loadLines();
@@ -53,9 +56,10 @@ export default function EskiHatlarScreen() {
       return;
     }
     const lower = searchQuery.toLowerCase();
-    setFilteredLines(
-      lines.filter((line) => line.name.toLowerCase().includes(lower)).slice(0, 5)
+    const currentFiltered = lines.filter((line) =>
+      line.name.toLowerCase().includes(lower)
     );
+    setFilteredLines(currentFiltered);
   }, [searchQuery, lines]);
 
   const loadLines = async () => {
@@ -72,6 +76,9 @@ export default function EskiHatlarScreen() {
       }
 
       const res = await fetch(API_URL);
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
       const json = await res.json();
       if (json?.data) {
         await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(json.data));
@@ -80,6 +87,7 @@ export default function EskiHatlarScreen() {
       }
     } catch (err) {
       console.error('Failed to load old lines:', err);
+      // Optionally, set an error state to display to the user
     }
   };
 
@@ -90,212 +98,231 @@ export default function EskiHatlarScreen() {
     Keyboard.dismiss();
   };
 
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded) {
+    return null; // Or a loading indicator
+  }
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+    <KeyboardAvoidingView
+      style={styles.keyboardAvoidingView}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    >
       <ScrollView
-        style={{ flex: 1, backgroundColor: '#0d0d1a' }}
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center' }}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollViewContent}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.squareContainer}>
-          <Text style={styles.header}>Eski Hatlar Arama</Text>
-          {!selectedLine && (
-            <View style={{ width: '100%', position: 'relative' }}>
-              <TextInput
-                style={styles.inputBox}
-                placeholder="Hat kodu veya adı girin..."
-                placeholderTextColor="#aaa"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                autoCorrect={false}
-                returnKeyType="search"
-                onSubmitEditing={() => {
-                  // Try exact match first
-                  const exact = lines.find(line => line.name.toLowerCase() === searchQuery.trim().toLowerCase());
-                  if (exact) {
-                    handleSelect(exact);
-                  } else if (filteredLines.length > 0) {
-                    handleSelect(filteredLines[0]);
-                  }
-                }}
-              />
-              {filteredLines.length > 0 && (
-                <View style={styles.suggestionBox}>
-                  {filteredLines.length > 5 ? (
-                    <ScrollView
-                      style={styles.suggestionScroll}
-                      horizontal={true}
-                      showsHorizontalScrollIndicator={true}
-                      contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4 }}
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.contentWrapper}>
+            <View style={styles.searchContainer}>
+              <Text style={styles.header}>Eski Hat Sorgulama</Text>
+              {!selectedLine ? (
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    ref={inputRef}
+                    style={styles.input}
+                    placeholder="Hat kodu veya adı girin..."
+                    placeholderTextColor="#aaa"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    autoCorrect={false}
+                    returnKeyType="search"
+                    onSubmitEditing={() => {
+                      const lowerQuery = searchQuery.trim().toLowerCase();
+                      const exact = lines.find((line) => line.name.toLowerCase() === lowerQuery);
+                      if (exact) {
+                        handleSelect(exact);
+                      } else if (filteredLines.length > 0) {
+                        handleSelect(filteredLines[0]);
+                      }
+                    }}
+                  />
+                  {filteredLines.length > 0 && (
+                    <View style={styles.suggestionBox}>
+                      {/* This ScrollView acts like a simple View now, allowing content to push height */}
+                      <ScrollView
+                        style={styles.suggestionScroll} // No maxHeight applied here
+                        keyboardShouldPersistTaps="always"
+                        showsVerticalScrollIndicator={true} // Still show scrollbar if this specific list grows large and the main page isn't scrolled
+                      >
+                        {filteredLines.map((line, index) => (
+                          <TouchableOpacity
+                            key={`${line.name}-${index}`}
+                            onPress={() => handleSelect(line)}
+                            style={styles.suggestionItem}
+                          >
+                            <Text style={styles.suggestionText} numberOfLines={1} ellipsizeMode="tail">
+                              {line.name}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.resultBox}>
+                  <View style={styles.resultHeader}>
+                    <Text style={styles.resultHeaderText}>{selectedLine.name}</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setSelectedLine(null);
+                        setSearchQuery('');
+                      }}
+                      style={styles.closeBtn}
                     >
-                      {filteredLines.map((line) => (
-                        <TouchableOpacity
-                          key={line.name}
-                          onPress={() => handleSelect(line)}
-                          style={[styles.suggestionItem, { minWidth: 120, alignItems: 'center', marginRight: 8 }]}
-                        >
-                          <Text style={styles.suggestionText} numberOfLines={1} ellipsizeMode="tail">{line.name}</Text>
-                        </TouchableOpacity>
+                      <Text style={styles.closeBtnText}>×</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {selectedLine.desc && (
+                    <View style={styles.descBox}>
+                      <Text style={styles.descText}>{selectedLine.desc}</Text>
+                    </View>
+                  )}
+                  <View style={styles.resultSection}>
+                    <Text style={styles.resultLabel}>Duraklar:</Text>
+                    <View style={styles.stopListContainer}>
+                      {selectedLine.stop.map((stop, index) => (
+                        <View key={index} style={styles.stopItem}>
+                          <View style={styles.stopDot} />
+                          <Text style={styles.stopText}>{stop}</Text>
+                          {index < selectedLine.stop.length - 1 && (
+                            <View style={styles.stopLine} />
+                          )}
+                        </View>
                       ))}
-                    </ScrollView>
-                  ) : (
-                    <ScrollView style={styles.suggestionScroll}>
-                      {filteredLines.map((line) => (
-                        <TouchableOpacity
-                          key={line.name}
-                          onPress={() => handleSelect(line)}
-                          style={styles.suggestionItem}
-                        >
-                          <Text style={styles.suggestionText}>{line.name}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
+                    </View>
+                  </View>
+                  {selectedLine.alt && selectedLine.alt.length > 0 && (
+                    <View style={styles.altRow}>
+                      <Text style={styles.resultLabel}>Alternatifler:</Text>
+                      <View style={styles.altPillRow}>
+                        {selectedLine.alt.map((alt, i) => (
+                          <View key={i} style={styles.altPill}>
+                            <Text style={styles.altPillText}>{alt}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                  {selectedLine.freq && (
+                    <Text style={styles.resultInfo}>
+                      <Text style={styles.resultLabel}>Sıklık:</Text> {selectedLine.freq}
+                    </Text>
                   )}
                 </View>
               )}
             </View>
-          )}
-
-          {selectedLine && (
-            <View style={styles.resultBox}>
-              <View style={styles.resultHeader}>
-                <Text style={styles.resultHeaderText}>{selectedLine.name}</Text>
-                <TouchableOpacity onPress={() => { setSelectedLine(null); setSearchQuery(''); }} style={styles.closeBtn}>
-                  <Text style={styles.closeBtnText}>×</Text>
-                </TouchableOpacity>
-              </View>
-              {selectedLine.desc && (
-                <View style={styles.descBox}>
-                  <Text style={styles.descText}>{selectedLine.desc}</Text>
-                </View>
-              )}
-              <View style={styles.resultSection}>
-                <Text style={styles.resultLabel}>Duraklar:</Text>
-                <View style={styles.stopListContainer}>
-                  <ScrollView
-                    style={[styles.stopListScroll, { height: 120 }]} // extra height for scrollbar
-                    contentContainerStyle={{ flexDirection: 'row', alignItems: 'flex-end', paddingVertical: 16, paddingHorizontal: 8 }}
-                    horizontal={true}
-                    showsHorizontalScrollIndicator={true}
-                  >
-                    {selectedLine.stop.map((stop, index) => (
-                      <TouchableOpacity key={index} style={styles.metroStopHorizontal} activeOpacity={0.7}>
-                        <View style={styles.stopDotHorizontal} />
-                        <Text
-                          style={stop.length > 14 ? [styles.stopTextHorizontal, styles.stopTextHorizontalSmall] : styles.stopTextHorizontal}
-                          numberOfLines={2}
-                        >
-                          {stop}
-                        </Text>
-                        {index < selectedLine.stop.length - 1 && (
-                          <View style={styles.metroLineHorizontal} />
-                        )}
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              </View>
-              {selectedLine.alt && selectedLine.alt.length > 0 && (
-                <View style={styles.altRow}>
-                  <Text style={styles.resultLabel}>Alternatif:</Text>
-                  <View style={styles.altPillRow}>
-                    {selectedLine.alt.map((alt, i) => (
-                      <View key={i} style={styles.altPill}>
-                        <Text style={styles.altPillText}>{alt}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )} 
-              {selectedLine.freq && (
-                <Text style={styles.resultInfo}>
-                  <Text style={styles.resultLabel}>Sıklık:</Text> {selectedLine.freq}
-                </Text>
-              )}
-            </View>
-          )}
-        </View>
+          </View>
+        </TouchableWithoutFeedback>
       </ScrollView>
-    </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  squareContainer: {
+  keyboardAvoidingView: {
+    flex: 1,
+    backgroundColor: '#0d0d1a',
+  },
+  scrollView: {
+    flex: 1,
+    backgroundColor: '#0d0d1a',
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    alignItems: 'center',
+    padding: 16,
+    paddingBottom: 32,
+  },
+  contentWrapper: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+    paddingBottom: 40,
+    justifyContent: 'flex-start',
+  },
+  searchContainer: {
     backgroundColor: '#1a1a2e',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(138, 108, 241, 0.1)',
     padding: 24,
     width: '100%',
-    maxWidth: 500,
-    marginTop: 48,
-    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   header: {
-    fontSize: 26,
-    fontFamily: 'Inter_700Bold',
+    fontSize: 24,
+    fontFamily: 'Inter_600SemiBold',
     color: '#8a6cf1',
-    marginBottom: 24,
+    marginBottom: 16,
     textAlign: 'center',
   },
-  inputBox: {
+  inputContainer: {
+    width: '100%',
+    position: 'relative',
+    zIndex: 1,
+  },
+  input: {
     backgroundColor: 'rgba(13, 13, 26, 0.6)',
-    borderColor: 'rgba(138, 108, 241, 0.2)',
     borderWidth: 1,
-    color: '#e0e0e0',
+    borderColor: 'rgba(138, 108, 241, 0.2)',
     borderRadius: 8,
-    padding: 16,
-    fontSize: 18,
+    padding: 14,
+    color: '#e0e0e0',
     width: '100%',
     fontFamily: 'Inter_400Regular',
+    marginBottom: 10,
   },
   suggestionBox: {
-    position: 'absolute',
-    top: 64,
-    width: '100%',
-    backgroundColor: 'rgba(26, 26, 46, 0.95)',
-    borderColor: 'rgba(138, 108, 241, 0.2)',
+    backgroundColor: 'rgba(26, 26, 46, 0.98)',
+    borderColor: 'rgba(138, 108, 241, 0.1)',
     borderWidth: 1,
-    borderRadius: 8,
-    zIndex: 10,
-    marginTop: 4,
-    maxHeight: 200,
-    overflow: 'hidden',
+    borderRadius: 12,
+    zIndex: 1000,
+    overflow: 'hidden', 
+    position: 'absolute',
+    top: 60,
+    left: 0,
+    right: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
   suggestionScroll: {
-    maxHeight: 200,
-    width: '100%',
   },
   suggestionItem: {
     paddingVertical: 10,
     paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(138, 108, 241, 0.08)',
   },
   suggestionText: {
     color: '#e0e0e0',
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: 'Inter_500Medium',
   },
   resultBox: {
-    marginTop: 32,
-    width: '100%',
-    backgroundColor: '#19193a',
-    borderColor: 'rgba(138, 108, 241, 0.25)',
-    borderWidth: 2,
-    borderRadius: 18,
-    padding: 0,
+    backgroundColor: '#1a1a2e',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(138, 108, 241, 0.1)',
+    padding: 14,
+    marginVertical: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    elevation: 8,
-    overflow: 'hidden',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    width: '92%',
+    maxWidth: 600,
+    alignSelf: 'center',
+    marginTop: 20,
   },
   resultHeader: {
     flexDirection: 'row',
@@ -304,11 +331,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#8a6cf1',
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    marginBottom: 10,
   },
   resultHeaderText: {
-    color: '#fff',
+    color: '#e0e0e0',
     fontSize: 20,
     fontWeight: 'bold',
     fontFamily: 'Inter_700Bold',
@@ -319,7 +347,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 2,
     borderRadius: 8,
-    backgroundColor: 'rgba(26,26,46,0.13)',
+    backgroundColor: 'rgba(138,108,241,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -330,18 +358,13 @@ const styles = StyleSheet.create({
     lineHeight: 30,
     marginTop: -2,
   },
-  resultTitle: {
-    fontSize: 22,
-    fontFamily: 'Inter_700Bold',
-    color: '#8a6cf1',
-    marginBottom: 8,
-  },
   descBox: {
-    backgroundColor: 'rgba(138,108,241,0.09)',
-    borderColor: '#8a6cf1',
+    backgroundColor: '#1a1a2e',
+    borderColor: 'rgba(138,108,241,0.1)',
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 12,
+    marginHorizontal: 14,
     marginBottom: 16,
     marginTop: 8,
     alignSelf: 'stretch',
@@ -349,11 +372,25 @@ const styles = StyleSheet.create({
   descText: {
     fontSize: 15,
     fontFamily: 'Inter_400Regular',
-    color: '#b6b0e7',
+    color: '#e0e0e0',
     textAlign: 'center',
   },
-  resultDesc: {
-    display: 'none', // legacy style, now hidden
+  resultSection: {
+    marginBottom: 12,
+    paddingHorizontal: 14,
+  },
+  resultLabel: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 15,
+    color: '#8a6cf1',
+    marginBottom: 8,
+  },
+  resultInfo: {
+    fontSize: 15,
+    color: '#e0e0e0',
+    marginTop: 4,
+    fontFamily: 'Inter_400Regular',
+    paddingHorizontal: 14,
   },
   altRow: {
     flexDirection: 'row',
@@ -362,20 +399,18 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     flexWrap: 'wrap',
     gap: 8,
+    paddingHorizontal: 14,
   },
   altPillRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginLeft: 8,
   },
   altPill: {
     backgroundColor: '#8a6cf1',
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 4,
-    marginRight: 6,
-    marginBottom: 4,
     minHeight: 28,
     justifyContent: 'center',
     alignItems: 'center',
@@ -385,84 +420,50 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Inter_500Medium',
   },
-  resultSection: {
-    marginBottom: 12,
-  },
-  resultLabel: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 15,
-    color: '#8a6cf1',
-  },
-  resultInfo: {
-    fontSize: 15,
-    color: '#e0e0e0',
-    marginTop: 4,
-    fontFamily: 'Inter_400Regular',
-  },
   stopListContainer: {
     marginTop: 12,
-    paddingLeft: 0,
-    paddingRight: 0,
-    position: 'relative',
-    height: 110,
-    maxHeight: 110,
+    paddingVertical: 10,
+    paddingLeft: 20, 
     width: '100%',
-    backgroundColor: 'rgba(26, 26, 46, 0.7)',
-    borderRadius: 10,
-    overflow: 'hidden',
+    backgroundColor: 'rgba(26, 26, 46, 0.98)',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(138, 108, 241, 0.08)',
-    justifyContent: 'center',
+    borderColor: 'rgba(138, 108, 241, 0.1)',
+  },
+  stopItem: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 8, 
+    position: 'relative', 
+    width: '100%', 
   },
-  stopListScroll: {
-    flexGrow: 0,
-    height: 110,
-    maxHeight: 110,
-    width: '100%',
-    paddingLeft: 0,
-    paddingRight: 0,
-  },
-  metroStopHorizontal: {
-    alignItems: 'center',
-    flexDirection: 'column',
-    marginHorizontal: 16,
-    position: 'relative',
-  },
-  stopDotHorizontal: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+  stopDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: '#8a6cf1',
     borderWidth: 2,
     borderColor: '#fff',
-    marginBottom: 6,
+    position: 'absolute',
+    left: -7, 
+    top: '50%',
+    marginTop: -7, 
     zIndex: 2,
   },
-  stopTextHorizontal: {
+  stopText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: 'Inter_500Medium',
-    marginTop: 2,
-    textAlign: 'center',
-    maxWidth: 90,
-    minWidth: 90,
-    width: 90,
-    overflow: 'hidden',
+    marginLeft: 15, 
+    flexShrink: 1, 
   },
-  stopTextHorizontalSmall: {
-    fontSize: 11,
-    lineHeight: 13,
-    fontFamily: 'Inter_400Regular',
-  },
-  metroLineHorizontal: {
-    width: 40,
-    height: 3,
+  stopLine: {
+    width: 2,
+    height: '100%', 
     backgroundColor: '#8a6cf1',
     position: 'absolute',
-    top: 8,
-    left: '100%',
-    zIndex: 1,
+    left: 0, 
+    zIndex: 1, 
     opacity: 0.7,
   },
-});
+}); 

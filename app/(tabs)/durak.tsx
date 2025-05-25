@@ -1,8 +1,8 @@
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { FontAwesome5, Ionicons } from '@expo/vector-icons'; // Import Ionicons for clear button
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react'; // Added useEffect
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface Suggestion {
@@ -27,6 +27,25 @@ interface Arrival {
   son_konum: string;
 }
 
+// Utility function to decode HTML entities and fix encoding issues (copied from HatScreen)
+const decodeHTMLEntities = (text: string): string => {
+  if (!text) return '';
+  
+  return text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    // Convert numeric HTML entities to characters
+    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(parseInt(dec, 10))) // Added parseInt(dec, 10)
+    // Handle hex entities
+    .replace(/&#x([\da-f]+);/gi, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
+    // Remove any other HTML tags
+    .replace(/<\/?[^>]+(>|$)/g, '');
+};
+
 function ArrivalCard({ arrival }: { arrival: Arrival }) {
   // Parse longitude and latitude directly (first is lon, second is lat)
   let lon: number | null = null, lat: number | null = null;
@@ -35,8 +54,8 @@ function ArrivalCard({ arrival }: { arrival: Arrival }) {
     lon = parseFloat(lonStr);
     lat = parseFloat(latStr);
   }
-  const [location, setLocation] = React.useState('Yükleniyor');
-  React.useEffect(() => {
+  const [location, setLocation] = useState('Yükleniyor'); // Changed React.useState to useState
+  useEffect(() => { // Changed React.useEffect to useEffect
     let cancelled = false;
     async function fetchLocation() {
       if (lon !== null && lat !== null && !isNaN(lon) && !isNaN(lat)) {
@@ -66,15 +85,17 @@ function ArrivalCard({ arrival }: { arrival: Arrival }) {
     }
     fetchLocation();
     return () => { cancelled = true; };
-  }, [arrival.son_konum]);
+  }, [arrival.son_konum, lon, lat]); // Added lon, lat to dependencies for correctness
+
   const canShowMapLink = lon !== null && lat !== null && !isNaN(lon) && !isNaN(lat);
+
   return (
-    <View style={styles.resultCard}>
-      <Text style={styles.resultTitle}>
+    <View style={styles.resultContainer}>
+      <Text style={styles.resultHeaderText}>
         {arrival.hatkodu}
-        <Text style={{ color: '#b39dfa', fontWeight: 'bold' }}> ⇒ {arrival.saat} ({arrival.dakika} dk) {arrival.son_hiz} km/sa</Text>
+        <Text style={styles.resultHeaderText}> ⇒ {arrival.saat} ({arrival.dakika} dk) {arrival.son_hiz} km/sa</Text>
       </Text>
-      <Text style={styles.resultLine}>{arrival.hatadi}</Text>
+      <Text style={styles.resultHeaderText}>{arrival.hatadi}</Text>
       <Text style={styles.carInfo} selectable={true}>{arrival.kapino} ({arrival.ototip})</Text>
       <View style={styles.carInfoRow}>
         <FontAwesome5 name="wifi" size={18} color={arrival.wifi ? '#4ade80' : '#ef4444'} style={styles.featureIcon} />
@@ -85,7 +106,7 @@ function ArrivalCard({ arrival }: { arrival: Arrival }) {
       </View>
       {canShowMapLink ? (
         <Text style={styles.locationRow}>
-          <Text style={styles.tamkonumLink} onPress={() => Linking.openURL(`https://www.google.com/maps?q=${lat},${lon}`)}>
+          <Text style={styles.tamkonumLink} onPress={() => Linking.openURL(`http://maps.google.com/maps?q=${lat},${lon}`)}>
             {location}
           </Text>
         </Text>
@@ -113,7 +134,9 @@ export default function DurakScreen() {
 
   const API_BASE = 'https://iett.deno.dev';
 
-
+  // Debounce and cancel previous fetches for suggestions
+  const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null); // Changed React.useRef to useRef
+  const abortController = useRef<AbortController | null>(null); // Changed React.useRef to useRef
 
   async function fetchSuggestions(text: string) {
     setQuery(text);
@@ -124,24 +147,44 @@ export default function DurakScreen() {
       setSuggestions([]);
       return;
     }
-    try {
-      const response = await fetch(`${API_BASE}/station-suggestions`, {
+
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+    debounceTimeout.current = setTimeout(() => {
+      // Abort previous fetch
+      if (abortController.current) {
+        abortController.current.abort();
+      }
+      const controller = new AbortController();
+      abortController.current = controller;
+
+      setLoading(true); // Start loading for suggestions
+      fetch(`${API_BASE}/station-suggestions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: text.trim() }),
-      });
-      const data = await response.json();
-      setSuggestions(data.filter((s: Suggestion) => s.DURAK_DURAK_KODU >= 0));
-
-    } catch (e) {
-      setError('Öneriler alınamadı.');
-    }
+        signal: controller.signal,
+      })
+        .then(r => r.json())
+        .then(data => {
+          setSuggestions(data.filter((s: Suggestion) => s.DURAK_DURAK_KODU >= 0));
+          setLoading(false); // End loading
+        })
+        .catch((e) => {
+          if (e.name !== 'AbortError') {
+            setError('Öneriler alınamadı.');
+            setSuggestions([]);
+          }
+          setLoading(false); // End loading even on abort/error
+        });
+    }, 300); // Debounce time
   }
 
   async function selectSuggestion(suggestion: Suggestion) {
     setSelectedStop(suggestion);
     setQuery(suggestion.DURAK_ADI);
-    setSuggestions([]);
+    setSuggestions([]); // Clear suggestions after selection
     inputRef.current?.blur();
     await fetchArrivals(suggestion.DURAK_DURAK_KODU);
   }
@@ -156,10 +199,14 @@ export default function DurakScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stopId }),
       });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
       setArrivals(data);
     } catch (e) {
       setError('Otobüs bilgileri alınamadı.');
+      console.error("Fetch Arrivals Error:", e);
     } finally {
       setLoading(false);
     }
@@ -171,165 +218,218 @@ export default function DurakScreen() {
     }
   }
 
+  // Effect for cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+      if (abortController.current) {
+        abortController.current.abort();
+      }
+    };
+  }, []);
+
   if (!fontsLoaded) return null;
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#18182c' }}
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled" style={{ backgroundColor: '#18182c' }}>
-        <View style={{ flex: 1, alignItems: 'center', paddingBottom: 40, backgroundColor: '#18182c' }}>
-          <View style={styles.squareContainer}>
-            <Text style={styles.header}>Durak Sorgulama</Text>
+      <ScrollView contentContainerStyle={styles.contentContainer} keyboardShouldPersistTaps="handled" style={styles.container}>
+        <View style={styles.searchContainer}>
+          <Text style={styles.title}>Durak Sorgulama</Text>
+          <View style={styles.inputContainer}>
             <TextInput
               ref={inputRef}
-              style={styles.inputBox}
+              style={styles.input}
               placeholder="Durak adı veya kodu girin"
-              placeholderTextColor="#aaa"
+              placeholderTextColor="#ccc"
               value={query}
               onChangeText={fetchSuggestions}
               autoCorrect={false}
               autoCapitalize="none"
               returnKeyType="search"
             />
-            {suggestions.length > 0 && (
-               <View style={[styles.suggestions, { width: '100%', marginTop: 4 }]}>
-                <ScrollView keyboardShouldPersistTaps="handled">
+            {query.length > 0 && (
+              <TouchableOpacity 
+                style={styles.clearButton} 
+                onPress={() => {
+                  setQuery('');
+                  setSuggestions([]); // Clear suggestions when input is cleared
+                  setSelectedStop(null); // Clear selected stop
+                  setArrivals([]); // Clear arrivals
+                }}
+              >
+                <Ionicons name="close-circle" size={20} color="#6a6a8a" />
+              </TouchableOpacity>
+            )}
+          </View>
+            
+          {query.length >= 2 && !selectedStop && (
+            <View style={styles.suggestionsContainer}>
+              {loading ? (
+                <ActivityIndicator size="small" color="#8a6cf1" style={styles.loader} />
+              ) : suggestions.length > 0 ? (
+                <ScrollView style={styles.suggestionsScrollView}>
                   {suggestions.map((item, idx) => (
                     <TouchableOpacity
                       key={item.DURAK_DURAK_KODU}
                       style={styles.suggestionItem}
                       onPress={() => selectSuggestion(item)}
                     >
-                      <Text style={{ color: '#e0e0e0', fontSize: 14 }}>{`${item.DURAK_ADI} (${item.DURAK_YON_BILGISI})`}</Text>
+                      <Text style={styles.lineName}>{decodeHTMLEntities(`${item.DURAK_ADI} (${item.DURAK_YON_BILGISI})`)}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
-              </View>
-            )}
-          </View>
-          {selectedStop && (
-            <TouchableOpacity style={styles.refreshBtn} onPress={handleRefresh}>
-              <FontAwesome5 name="sync-alt" size={18} color="#fff" />
-              <Text style={styles.refreshBtnText}>  Yenile</Text>
-            </TouchableOpacity>
+              ) : (
+                query.length >= 2 && !loading && <Text style={styles.noDataText}>Sonuç bulunamadı</Text>
+              )}
+            </View>
           )}
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-          {loading && <ActivityIndicator size="large" color="#8a6cf1" style={{ marginTop: 24 }} />}
-          {!loading && arrivals.length === 0 && selectedStop && !error ? (
-            <Text style={{ color: '#aaa', textAlign: 'center', marginTop: 12 }}>Varacak otobüs bulunamadı.</Text>
-          ) : null}
-          {!loading && arrivals.map((arrival, idx) => <ArrivalCard key={idx} arrival={arrival} />)}
         </View>
+
+        {selectedStop && (
+          <TouchableOpacity style={styles.refreshBtn} onPress={handleRefresh}>
+            <FontAwesome5 name="sync-alt" size={18} color="#fff" />
+            <Text style={styles.refreshBtnText}>Yenile</Text>
+          </TouchableOpacity>
+        )}
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          
+        {loading && !selectedStop && <ActivityIndicator size="large" color="#8a6cf1" style={styles.loader} />}
+          
+        {!loading && arrivals.length === 0 && selectedStop && !error ? (
+          <Text style={styles.noDataText}>Varacak otobüs bulunamadı.</Text>
+        ) : null}
+
+        {!loading && arrivals.map((arrival, idx) => <ArrivalCard key={idx} arrival={arrival} />)}
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  squareContainer: {
+  container: { flex: 1, backgroundColor: '#0d0d1a' },
+  contentContainer: { padding: 16, paddingBottom: 32 },
+  searchContainer: {
     backgroundColor: '#1a1a2e',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(138, 108, 241, 0.1)',
     padding: 24,
     width: '100%',
-    maxWidth: 600,
-    marginTop: 48,
-    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 12,
   },
-  header: {
-    fontSize: 22,
-    fontFamily: 'Inter_700Bold',
-    color: '#8a6cf1',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  inputBox: {
+  title: { fontSize: 24, fontFamily: 'Inter_600SemiBold', color: '#8a6cf1', marginBottom: 16, textAlign: 'center' },
+  inputContainer: { position: 'relative', width: '100%' },
+  input: {
     backgroundColor: 'rgba(13, 13, 26, 0.6)',
-    borderColor: 'rgba(138, 108, 241, 0.2)',
     borderWidth: 1,
-    color: '#e0e0e0',
+    borderColor: 'rgba(138, 108, 241, 0.2)',
     borderRadius: 8,
     padding: 14,
-    fontSize: 14,
+    color: '#e0e0e0',
     width: '100%',
-    marginBottom: 10,
     fontFamily: 'Inter_400Regular',
   },
-  suggestions: {
-    backgroundColor: 'rgba(26, 26, 46, 0.95)',
-    borderColor: 'rgba(138, 108, 241, 0.1)',
+  clearButton: { position: 'absolute', right: 12, top: 14 },
+  suggestionsContainer: {
+    marginTop: 8,
+    backgroundColor: 'rgba(26, 26, 46, 0.98)',
     borderWidth: 1,
-    borderRadius: 8,
-    zIndex: 1000,
+    borderColor: 'rgba(138, 108, 241, 0.26)',
+    borderRadius: 12,
+    maxHeight: 350,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 12,
     overflow: 'hidden',
+    zIndex: 20,
   },
+  suggestionsScrollView: { maxHeight: 350 },
   suggestionItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(138, 108, 241, 0.05)',
+    borderBottomColor: 'rgba(138, 108, 241, 0.08)',
   },
+  selectedItem: { backgroundColor: 'rgba(138, 108, 241, 0.34)' },
+  lineCode: {
+    backgroundColor: 'rgba(138, 108, 241, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 4,
+    color: '#8a6cf1',
+    fontFamily: 'Inter_500Medium',
+    marginRight: 12,
+    minWidth: 50,
+    textAlign: 'center',
+  },
+  lineName: { color: '#e0e0e0', fontFamily: 'Inter_400Regular', flex: 1 },
+  loader: { marginVertical: 16 },
+  noDataText: { color: '#a0a0a0', fontFamily: 'Inter_400Regular', textAlign: 'center', marginVertical: 16 },
+  resultContainer: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(138, 108, 241, 0.1)',
+    padding: 16,
+    marginVertical: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 12,
+  },
+  resultHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(138, 108, 241, 0.1)',
+  },
+  resultHeaderText: { fontSize: 18, fontFamily: 'Inter_600SemiBold', color: '#e0e0e0' },
   refreshBtn: {
-    backgroundColor: '#6a4cff',
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 18,
+    backgroundColor: '#6a4cff', // Match HatScreen button
+    borderRadius: 8, // Match HatScreen button
+    paddingVertical: 12, // Match HatScreen button
+    paddingHorizontal: 16, // Match HatScreen button
     alignItems: 'center',
     flexDirection: 'row',
-    marginTop: 12,
+    marginTop: 16, // Adjusted margin
     alignSelf: 'center',
-    marginBottom: 4,
+    marginBottom: 16, // Adjusted margin
+    shadowColor: '#000', // Match HatScreen button
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   refreshBtnText: {
     color: '#fff',
-    fontFamily: 'Inter_500Medium',
-    fontSize: 14,
-  },
-  resultCard: {
-    backgroundColor: '#1a1a2e',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(138, 108, 241, 0.1)',
-    padding: 14,
-    marginVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    width: '100%',
-    maxWidth: 600,
-    alignSelf: 'center',
-  },
-  resultTitle: {
-    color: '#b39dfa',
-    fontSize: 18,
-    fontFamily: 'Inter_700Bold',
-    marginBottom: 2,
-  },
-  resultLine: {
-    color: '#fff',
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    marginBottom: 4,
-  },
-  carInfo: {
-    color: '#c0c0c0',
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    marginBottom: 2,
+    fontFamily: 'Inter_600SemiBold', // Match HatScreen buttonText
+    fontSize: 16, // Match HatScreen buttonText
+    marginLeft: 8, // Space from icon
   },
   carInfoRow: {
-    flexDirection: 'row', alignItems: 'center', marginBottom: 8, },
+    flexDirection: 'row', alignItems: 'center', marginBottom: 8,
+  },
   featureIcon: { marginRight: 8, },
-  locationRow: { marginTop: 10, fontFamily: 'Inter_400Regular', fontSize: 12, color: '#fff', },
-  tamkonumLink: { color: '#6a4cff', textDecorationLine: 'underline', },
-  errorText: { color: '#ff4c4c', fontSize: 14, marginTop: 12, },
+  carInfo: { color: '#e0e0e0', fontFamily: 'Inter_400Regular', marginBottom: 8 },
+  locationRow: { marginTop: 10, fontFamily: 'Inter_400Regular', fontSize: 12, color: '#e0e0e0', }, // Match HatScreen's general text color
+  tamkonumLink: { color: '#6a4cff', textDecorationLine: 'underline', }, // Match HatScreen's button color for links
+  errorText: { color: '#ef4444', fontSize: 14, marginTop: 12, textAlign: 'center', }, // Match HatScreen error color
 });

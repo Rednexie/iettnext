@@ -67,20 +67,48 @@ export default function HatScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [direction, setDirection] = useState(0);
 
-  // Fetch suggestions when query changes
+  // Debounce and cancel previous fetches for suggestions
+  const debounceTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortController = React.useRef<AbortController | null>(null);
+
   useEffect(() => {
+    /*
     if (query.length < 2) {
       setSuggestions([]);
       return;
     }
-    
-    fetch(`${API_BASE}/api/line-suggestions?q=${encodeURIComponent(query)}`)
-      .then(r => r.json())
-      .then(data => {
-        setSuggestions(data);
-        setSelectedIndex(-1);
-      })
-      .catch(() => setSuggestions([]));
+    */
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+    debounceTimeout.current = setTimeout(() => {
+      // Abort previous fetch
+      if (abortController.current) {
+        abortController.current.abort();
+      }
+      const controller = new AbortController();
+      abortController.current = controller;
+      fetch(`${API_BASE}/api/line-suggestions?q=${encodeURIComponent(query)}`, { signal: controller.signal })
+        .then(r => r.json())
+        .then(data => {
+          // filter suggestions before setting
+          const filtered = data.filter((item: LineItem) => !item?.line?.trim().startsWith('<'));
+          setSuggestions(filtered);
+          setSelectedIndex(-1);
+        })
+        .catch((e) => {
+          if (e.name !== 'AbortError') setSuggestions([]);
+        });
+    }, 400);
+    // Cleanup
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+      if (abortController.current) {
+        abortController.current.abort();
+      }
+    };
   }, [query]);
 
   const selectLine = (item: LineItem) => {
@@ -205,8 +233,10 @@ export default function HatScreen() {
           
           {query.length >= 2 && (
             <View style={styles.suggestionsContainer}>
-              {suggestions.length > 0 ? (
-                suggestions.map((item, index) => (
+              {loading ? (
+                <ActivityIndicator size="small" color="#8a6cf1" style={styles.loader} />
+              ) : suggestions.length > 0 ? (
+                suggestions.filter(item => typeof item.line === 'string' && typeof item.name === 'string').map((item, index) => (
                   <TouchableOpacity 
                     key={`${item.line}-${index}`}
                     style={[styles.suggestionItem, index === selectedIndex && styles.selectedItem]} 
@@ -217,7 +247,7 @@ export default function HatScreen() {
                   </TouchableOpacity>
                 ))
               ) : (
-                query.length >= 2 && <Text style={styles.noDataText}>Sonuç bulunamadı</Text>
+                query.length >= 2 && !loading && suggestions.length === 0 && <Text style={styles.noDataText}>Sonuç bulunamadı</Text>
               )}
             </View>
           )}
@@ -436,23 +466,20 @@ const styles = StyleSheet.create({
     top: 14,
   },
   suggestionsContainer: {
-    marginTop: 8,
-    backgroundColor: 'rgba(26, 26, 46, 0.95)',
-    borderWidth: 1,
-    borderColor: 'rgba(138, 108, 241, 0.2)',
-    borderRadius: 8,
-    maxHeight: 200,
-    width: '100%',
+    elevation: 12,
+    overflow: 'hidden',
+    zIndex: 20,
   },
   suggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(138, 108, 241, 0.1)',
+    borderBottomColor: 'rgba(138, 108, 241, 0.08)',
   },
   selectedItem: {
-    backgroundColor: 'rgba(138, 108, 241, 0.2)',
+    backgroundColor: 'rgba(138, 108, 241, 0.34)',
   },
   lineCode: {
     backgroundColor: 'rgba(138, 108, 241, 0.2)',
