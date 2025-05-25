@@ -36,7 +36,7 @@
 ## 📸 Screenshots
 
 ### Main Page
-[![Main Page](https://i.imgur.com/PesYvfS.png)](https://imgur.com/a/PesYvfS)
+[![Main Page](https://imgbox.com/DFL3uwR9)](https://imgur.com/a/PesYvfS)
 
 ### Vehicle Search
 [![Vehicle Search 1](https://i.imgur.com/XJq8yCv.png)](https://imgur.com/a/XJq8yCv)
