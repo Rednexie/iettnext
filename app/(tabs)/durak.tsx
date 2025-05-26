@@ -13,6 +13,7 @@ interface Suggestion {
 
 interface Arrival {
   hatkodu: string;
+  depar?: boolean;
   saat: string;
   dakika: number;
   son_hiz: number;
@@ -91,11 +92,11 @@ function ArrivalCard({ arrival }: { arrival: Arrival }) {
 
   return (
     <View style={styles.resultContainer}>
-      <Text style={styles.resultHeaderText}>
+      <Text style={[styles.resultHeaderText, { color: '#8a6cf1' }]}>
         {arrival.hatkodu}
-        <Text style={styles.resultHeaderText}> ⇒ {arrival.saat} ({arrival.dakika} dk) {arrival.son_hiz} km/sa</Text>
+        <Text style={[styles.resultHeaderText, { color: '#8a6cf1' }]}> ⇒ {arrival.saat} ({arrival.dakika} dk) {arrival.son_hiz} km/sa</Text>
       </Text>
-      <Text style={styles.resultHeaderText}>{arrival.hatadi}</Text>
+      <Text style={styles.resultHeaderText}>{arrival.hatadi + (arrival.depar ? '-' : '')}</Text>
       <Text style={styles.carInfo} selectable={true}>{arrival.kapino} ({arrival.ototip})</Text>
       <View style={styles.carInfoRow}>
         <FontAwesome5 name="wifi" size={18} color={arrival.wifi ? '#4ade80' : '#ef4444'} style={styles.featureIcon} />
@@ -218,6 +219,12 @@ export default function DurakScreen() {
     }
   }
 
+  async function handleSubmitEditing() {
+    if (query.trim() !== "") {
+      await fetchArrivals(Number(query.trim()) || 0);
+    }
+  }
+
   // Effect for cleanup on unmount
   useEffect(() => {
     return () => {
@@ -249,6 +256,7 @@ export default function DurakScreen() {
               placeholderTextColor="#ccc"
               value={query}
               onChangeText={fetchSuggestions}
+              onSubmitEditing={handleSubmitEditing}
               autoCorrect={false}
               autoCapitalize="none"
               returnKeyType="search"

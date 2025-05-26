@@ -1,5 +1,9 @@
-durak.tsx - the user should be able to click enter to just enter the line, without having to click on the suggestion
+durak.tsx
+- fix api connection
 
 harita.tsx - add a link to the website, where this feature is working
+- fix modal scrollability
 
-hat.tsx - fetch the departure times directly from iett.istanbul
+hat.tsx 
+- fetch the departure times directly from iett.istanbul
+- add 'x' to the inputbox and remove 'yeni arama' button

@@ -190,6 +190,12 @@ export default function HatScreen() {
     setAnnouncements([]);
   };
 
+  const handleSubmitEditing = () => {
+    if (query.trim()) {
+      selectLine({ line: query.trim().toUpperCase(), name: query.trim().toUpperCase() });
+    }
+  };
+
   if (!fontsLoaded) return null;
 
   return (
@@ -198,60 +204,52 @@ export default function HatScreen() {
       contentContainerStyle={styles.contentContainer}
       keyboardShouldPersistTaps='handled'
     >
-      {!selected ? (
-        <View style={styles.searchContainer}>
-          <Text style={styles.title}>Hat Sorgulama</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Hat kodu veya adı girin..."
-              placeholderTextColor="#ccc"
-              value={query}
-              onChangeText={setQuery}
-              autoCapitalize="characters"
-            />
-            {query.length > 0 && (
-              <TouchableOpacity 
-                style={styles.clearButton} 
-                onPress={() => setQuery('')}
-              >
-                <Ionicons name="close-circle" size={20} color="#6a6a8a" />
-              </TouchableOpacity>
-            )}
-          </View>
-          
-          {query.length >= 2 && (
-            <View style={styles.suggestionsContainer}>
-              {loading ? (
-                <ActivityIndicator size="small" color="#8a6cf1" style={styles.loader} />
-              ) : suggestions.length > 0 ? (
-                suggestions.filter(item => typeof item.line === 'string' && typeof item.name === 'string').map((item, index) => (
-                  <TouchableOpacity 
-                    key={`${item.line}-${index}`}
-                    style={[styles.suggestionItem, index === selectedIndex && styles.selectedItem]} 
-                    onPress={() => selectLine(item)}
-                  >
-                    <Text style={styles.lineCode}>{item.line}</Text>
-                    <Text style={styles.lineName}>{decodeHTMLEntities(item.name)}</Text>
-                  </TouchableOpacity>
-                ))
-              ) : (
-                query.length >= 2 && !loading && suggestions.length === 0 && <Text style={styles.noDataText}>Sonuç bulunamadı</Text>
-              )}
-            </View>
+      <View style={styles.searchContainer}>
+        <Text style={styles.title}>Hat Sorgulama</Text>
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Hat kodu veya adı girin..."
+            placeholderTextColor="#ccc"
+            value={query}
+            onChangeText={setQuery}
+            onSubmitEditing={handleSubmitEditing}
+            returnKeyType="search"
+            autoCapitalize="characters"
+          />
+          {query.length > 0 && (
+            <TouchableOpacity style={styles.clearButton} onPress={resetSearch}>
+              <Ionicons name="close-circle" size={20} color="#6a6a8a" />
+            </TouchableOpacity>
           )}
         </View>
-      ) : (
+        {!selected && query.length >= 0 && (
+          <View style={styles.suggestionsContainer}>
+            {loading ? (
+              <ActivityIndicator size="small" color="#8a6cf1" style={styles.loader} />
+            ) : suggestions.length > 0 ? (
+              suggestions.filter(item => typeof item.line === 'string' && typeof item.name === 'string').map((item, index) => (
+                <TouchableOpacity 
+                  key={`${item.line}-${index}`}
+                  style={[styles.suggestionItem, index === selectedIndex && styles.selectedItem]} 
+                  onPress={() => selectLine(item)}
+                >
+                  <Text style={styles.lineCode}>{item.line}</Text>
+                  <Text style={styles.lineName}>{decodeHTMLEntities(item.name)}</Text>
+                </TouchableOpacity>
+              ))
+            ) : (
+              query.length > 0 && !selected && !loading && suggestions.length === 0 && <Text style={styles.noDataText}>Sonuç bulunamadı</Text>
+            )}
+          </View>
+        )}
+      </View>
+      {selected && (
         <View style={[styles.resultContainer, { paddingTop: 16 }]}>
           {loading ? (
             <ActivityIndicator size="large" color="#8a6cf1" style={styles.loader} />
           ) : (
             <>  
-              <View style={{ alignItems: 'center', marginBottom: 16 }}>
-                <TouchableOpacity style={styles.button} onPress={resetSearch}>
-                  <Text style={styles.buttonText}>Yeni Arama</Text>
-                </TouchableOpacity>
-              </View>
               <View style={styles.tabContainer}>
                 <TouchableOpacity
                   style={[styles.tabItem, activeTab === 'times' && styles.tabItemActive]}
@@ -283,7 +281,17 @@ export default function HatScreen() {
               )}
               {activeTab === 'times' ? (
                 <View style={styles.contentCard}>
-                  <Text style={styles.sectionTitle}>Sefer Saatleri</Text>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Sefer Saatleri</Text>
+                    <Switch
+                      trackColor={{ false: '#0d0d1a', true: '#0d0d1a' }}
+                      thumbColor={direction ? '#8a6cf1' : '#6a4cff'}
+                      ios_backgroundColor="#0d0d1a"
+                      onValueChange={(val) => setDirection(val ? 1 : 0)}
+                      value={direction === 1}
+                      style={styles.directionSwitch}
+                    />
+                  </View>
                   {timetable.length > 0 ? (
                     <>  
                       <View style={styles.tableHeader}>
@@ -315,22 +323,16 @@ export default function HatScreen() {
                 </View>
               ) : (
                 <View style={styles.contentCard}>
-                  <Text style={styles.sectionTitle}>Duraklar</Text>
-                  {/* Direction switch for Duraklar */}
-                  <View style={styles.directionContainer}>
-                    <Text style={styles.directionLabel}>Yön:</Text>
-                    <View style={styles.directionSwitchContainer}>
-                      <Text style={[styles.directionText, direction === 0 ? styles.activeDirection : {}]}>Gidiş</Text>
-                      <Switch
-                        trackColor={{ false: '#1a1a2e', true: '#1a1a2e' }}
-                        thumbColor={direction ? '#8a6cf1' : '#6a4cff'}
-                        ios_backgroundColor="#1a1a2e"
-                        onValueChange={(val) => setDirection(val ? 1 : 0)}
-                        value={direction === 1}
-                        style={styles.directionSwitch}
-                      />
-                      <Text style={[styles.directionText, direction === 1 ? styles.activeDirection : {}]}>Dönüş</Text>
-                    </View>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Duraklar</Text>
+                    <Switch
+                      trackColor={{ false: '#0d0d1a', true: '#0d0d1a' }}
+                      thumbColor={direction ? '#8a6cf1' : '#6a4cff'}
+                      ios_backgroundColor="#0d0d1a"
+                      onValueChange={(val) => setDirection(val ? 1 : 0)}
+                      value={direction === 1}
+                      style={styles.directionSwitch}
+                    />
                   </View>
                   <View style={styles.stationContainer}>
                     <View style={styles.stationLine} />
@@ -362,7 +364,7 @@ export default function HatScreen() {
               </TouchableOpacity>
             </View>
             
-            <ScrollView style={styles.announcementList}>
+            <ScrollView style={styles.announcementList} contentContainerStyle={{ flexGrow: 1 }}>
               {announcements.length > 0 ? (
                 announcements.map((announcement, index) => {
                   // Determine the severity level for styling
@@ -392,7 +394,7 @@ export default function HatScreen() {
                     >
                       <Text style={styles.announcementDate}>
                           {(announcement.date || announcement.VERI_SAATI) ? 
-                          new Date(announcement.date || announcement.VERI_SAATI || '').toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }) : 
+                          announcement.date || announcement.VERI_SAATI : 
                           'Tarih belirtilmemiş'}
                       </Text>
                       {contentLines.map((line, lineIndex) => (
@@ -581,11 +583,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   sectionTitle: {
     fontSize: 18,
     fontFamily: 'Inter_600SemiBold',
     color: '#8a6cf1',
-    marginBottom: 12,
   },
   tableHeader: {
     flexDirection: 'row',
@@ -722,10 +729,13 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
     marginBottom: 16,
   },
   tabItem: {
+    flex: 1,
+    alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
@@ -740,33 +750,6 @@ const styles = StyleSheet.create({
   },
   activeTabItem: {
     color: '#ffffff',
-  },
-  directionContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 8,
-  },
-  directionLabel: {
-    color: '#8a6cf1',
-    fontFamily: 'Inter_500Medium',
-    marginRight: 12,
-  },
-  directionSwitchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(26, 26, 46, 0.5)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  directionText: {
-    color: '#a0a0a0',
-    fontFamily: 'Inter_400Regular',
-    marginHorizontal: 8,
-  },
-  activeDirection: {
-    color: '#ffffff',
-    fontFamily: 'Inter_500Medium',
   },
   directionSwitch: {
     marginHorizontal: 8,

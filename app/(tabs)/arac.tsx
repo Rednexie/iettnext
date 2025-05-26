@@ -2,7 +2,7 @@ import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, us
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const API_BASE = 'https://iett.deno.dev';
 
@@ -137,7 +137,7 @@ const Arac = () => {
           {query.length > 0 && (
             <TouchableOpacity 
               style={styles.clearButton} 
-              onPress={() => setQuery('')}
+              onPress={resetSearch}
             >
               <Ionicons name="close-circle" size={20} color="#6a6a8a" />
             </TouchableOpacity>
@@ -159,13 +159,6 @@ const Arac = () => {
               {result.KapıKodu ? `${result.KapıKodu} / ${result.plaka || 'N/A'}` : result.plaka}
             </Text>
           </View>
-          
-          <TouchableOpacity 
-            style={styles.button} 
-            onPress={resetSearch}
-          >
-            <Text style={styles.buttonText}>Yeni Arama</Text>
-          </TouchableOpacity>
           
           <View style={styles.tableContainer}>
             {(() => {
@@ -383,7 +376,7 @@ const styles = StyleSheet.create({
     minWidth: 60,
   },
   taskName: {
-    color: '#f1c40f',
+    color: '#8a6cf1',
     fontFamily: 'Inter_500Medium',
     flex: 1,
   },

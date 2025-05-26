@@ -1,12 +1,12 @@
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Linking } from 'react-native';
+import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HaritaScreen() {
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
-    Inter_600SemiBold,
+    Inter_600SemiBold, 
     Inter_700Bold,
   });
   if (!fontsLoaded) return null;
@@ -49,16 +49,22 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   linkButton: {
-    backgroundColor: '#8a6cf1',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    backgroundColor: '#6a4cff',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
     borderRadius: 8,
-    marginTop: 8,
+    marginTop: 12,
+    shadowColor: '#6a4cff',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   linkText: {
-    color: 'white',
-    fontFamily: 'Inter_600SemiBold',
+    color: '#ffffff',
+    fontFamily: 'Inter_500Medium',
     fontSize: 16,
     textAlign: 'center',
+    letterSpacing: 0,
   },
 });
