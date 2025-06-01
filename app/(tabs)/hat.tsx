@@ -28,14 +28,6 @@ type LineItem = {
   name: string;
 };
 
-type TimeTableItem = {
-  K_ORER_DTSAATGIDIS?: string;
-  K_ORER_DTSAATGUN?: string;
-  K_ORER_SGUNTIPI?: string;
-  K_ORER_DTSAATLVTIP?: string;
-  K_ORER_SSERVISTIPI?: string;
-};
-
 type AnnouncementItem = {
   date?: string;
   VERI_SAATI?: string;
@@ -45,7 +37,13 @@ type AnnouncementItem = {
   severity?: string;
 };
 
-const API_BASE = 'https://iett.deno.dev';
+type DepartureTable = {
+  title: string;
+  schedule: Record<'I'|'C'|'P', string[]>;
+};
+
+// const API_BASE = 'http://192.168.1.4:3000'
+const API_BASE = 'https://iett.deno.dev'
 const { width } = Dimensions.get('window');
 
 export default function HatScreen() {
@@ -60,13 +58,17 @@ export default function HatScreen() {
   const [suggestions, setSuggestions] = useState<LineItem[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [selected, setSelected] = useState<LineItem | null>(null);
-  const [timetable, setTimetable] = useState<TimeTableItem[]>([]);
+  const [timetable, setTimetable] = useState<DepartureTable[]>([]);
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [stations, setStations] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [direction, setDirection] = useState(0);
   const [activeTab, setActiveTab] = useState<'times'|'stations'>('times');
+
+  // Dynamic font size for line name
+  const lineNameText = selected ? decodeHTMLEntities(selected.name) : '';
+  const lineNameFontSize = lineNameText.length > 20 ? 14 : 16;
 
   // Parse station anchor HTML into text entries
   const parseAnchors = (html: string): string[] => {
@@ -108,12 +110,6 @@ export default function HatScreen() {
   const abortController = React.useRef<AbortController | null>(null);
 
   useEffect(() => {
-    /*
-    if (query.length < 2) {
-      setSuggestions([]);
-      return;
-    }
-    */
     if (debounceTimeout.current) {
       clearTimeout(debounceTimeout.current);
     }
@@ -147,6 +143,33 @@ export default function HatScreen() {
     };
   }, [query]);
 
+  // Parse HTML departure tables by matching each <table class="line-table">
+  const parseLineTimeTable = (html: string): DepartureTable[] => {
+    const tables: DepartureTable[] = [];
+    const tableRe = /<table class="line-table">([\s\S]*?)<\/table>/g;
+    let m;
+    while ((m = tableRe.exec(html))) {
+      const tblHtml = m[1];
+      const titleMatch = tblHtml.match(/<th class="routedetailstartend"[^>]*>([\s\S]*?)<\/th>/);
+      const title = titleMatch ? decodeHTMLEntities(titleMatch[1].trim()) : '';
+      const sched: Record<'I'|'C'|'P', string[]> = { I: [], C: [], P: [] };
+      const tbodyMatch = tblHtml.match(/<tbody>([\s\S]*?)<\/tbody>/);
+      if (tbodyMatch) {
+        const rows = tbodyMatch[1].match(/<tr>([\s\S]*?)<\/tr>/g) || [];
+        rows.forEach(r => {
+          const cells = Array.from(r.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g), x => decodeHTMLEntities(x[1].trim()));
+          if (cells.length === 3) {
+            sched.I.push(cells[0]);
+            sched.C.push(cells[1]);
+            sched.P.push(cells[2]);
+          }
+        });
+      }
+      tables.push({ title, schedule: sched });
+    }
+    return tables;
+  };
+
   const selectLine = (item: LineItem) => {
     setSelected(item);
     setQuery(item.line);
@@ -157,26 +180,23 @@ export default function HatScreen() {
   const fetchDetails = async (item: LineItem) => {
     setLoading(true);
     try {
-      const [ttRes, anRes] = await Promise.all([
-        fetch(`${API_BASE}/time-table`, { 
+      const [htmlRes, anRes] = await Promise.all([
+        fetch(`${API_BASE}/line-time-table`, {
           method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({line: item.line})
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ line: item.line }),
         }),
         fetch(`${API_BASE}/announcements`, {
           method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({line: item.line})
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ line: item.line }),
         }),
       ]);
-      
-      const tt = await ttRes.json();
-      const an = await anRes.json();
-      
-      setTimetable(tt);
-      setAnnouncements(an);
-    } catch (error) {
-      console.error('Error fetching details:', error);
+      const html = await htmlRes.text();
+      setTimetable(parseLineTimeTable(html));
+      setAnnouncements(await anRes.json());
+    } catch (e) {
+      console.error('Error fetching details:', e);
     } finally {
       setLoading(false);
     }
@@ -267,7 +287,7 @@ export default function HatScreen() {
               <View style={styles.resultHeader}>
                 <View style={styles.lineInfoContainer}>
                   <Text style={styles.lineCodeLarge}>{selected.line}</Text>
-                  <Text style={styles.lineNameLarge}>{decodeHTMLEntities(selected.name)}</Text>
+                  <Text style={[styles.lineNameLarge, { fontSize: lineNameFontSize }]}>{lineNameText}</Text>
                 </View>
               </View>
               {announcements.length > 0 && (
@@ -292,30 +312,21 @@ export default function HatScreen() {
                       style={styles.directionSwitch}
                     />
                   </View>
-                  {timetable.length > 0 ? (
-                    <>  
+                  {timetable.length > 0 && timetable[direction] ? (
+                    <>
+                      <Text style={[styles.sectionTitle, { fontSize: 14, marginBottom: 8 }]}>{timetable[direction].title}</Text>
                       <View style={styles.tableHeader}>
-                        <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Saat</Text>
-                        <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Gün</Text>
-                        <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Hizmet</Text>
+                        <Text style={[styles.tableHeaderCell, { flex: 1 }]}>İş Günleri</Text>
+                        <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Cumartesi</Text>
+                        <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Pazar</Text>
                       </View>
-                      {timetable.map((item, index) => {
-                        const time = item.K_ORER_DTSAATGIDIS?.split(' ')[1]?.slice(0, 5) || 'N/A';
-                        const dayCode = item.K_ORER_DTSAATGUN || item.K_ORER_SGUNTIPI || '';
-                        const dayMap: Record<string, string> = { 'I': 'İş Günleri', 'C': 'Cumartesi', 'P': 'Pazar' };
-                        const dayName = dayCode in dayMap ? dayMap[dayCode] : (dayCode || 'N/A');
-                        const svcCode = item.K_ORER_DTSAATLVTIP || item.K_ORER_SSERVISTIPI || '';
-                        const svcMap: Record<string, string> = { '0': 'Normal', '1': 'Express', '2': 'Ekspres' };
-                        const svcName = svcCode in svcMap ? svcMap[svcCode] : (svcCode || 'N/A');
-                        
-                        return (
-                          <View key={index} style={[styles.tableRow, index % 2 === 1 && styles.tableRowAlt]}>
-                            <Text style={[styles.tableCell, { flex: 1 }]}>{time}</Text>
-                            <Text style={[styles.tableCell, { flex: 2 }]}>{dayName}</Text>
-                            <Text style={[styles.tableCell, { flex: 1 }]}>{svcName}</Text>
-                          </View>
-                        );
-                      })}
+                      {timetable[direction].schedule.I.map((_, idx) => (
+                        <View key={idx} style={[styles.tableRow, idx % 2 === 1 && styles.tableRowAlt]}>
+                          <Text style={[styles.tableCell, { flex: 1 }]}>{timetable[direction].schedule.I[idx]}</Text>
+                          <Text style={[styles.tableCell, { flex: 1 }]}>{timetable[direction].schedule.C[idx]}</Text>
+                          <Text style={[styles.tableCell, { flex: 1 }]}>{timetable[direction].schedule.P[idx]}</Text>
+                        </View>
+                      ))}
                     </>
                   ) : (
                     <Text style={styles.noDataText}>Bu hat için sefer saatleri bulunmamaktadır.</Text>
@@ -524,7 +535,7 @@ const styles = StyleSheet.create({
   lineNameLarge: {
     color: '#ffffff',
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 18,
+    fontSize: 16,
   },
   backButton: {
     backgroundColor: '#6a4cff',

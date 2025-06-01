@@ -1,7 +1,9 @@
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import localVersionData from '../../assets/version.json';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -11,6 +13,50 @@ export default function HomeScreen() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+
+  // Debug flag to always trigger update prompt
+  const ALWAYSUPDATE = false;
+
+  // Daily update check
+  useEffect(() => {
+    const checkUpdate = async () => {
+      const now = Date.now();
+      let last: string | null = null;
+      if (!ALWAYSUPDATE) {
+        last = await AsyncStorage.getItem('lastUpdateCheck');
+        if (last && now - parseInt(last) < 24 * 60 * 60 * 1000) {
+          return;
+        }
+      }
+      try {
+        const res = await fetch('https://raw.githubusercontent.com/Rednexie/rednexie.github.io/main/iettnext.txt');
+        if (!res.ok) return;
+        const remoteVersion = (await res.text()).trim();
+        const semverRe = /^\d+\.\d+\.\d+$/;
+        if (!semverRe.test(remoteVersion)) {
+          return;
+        }
+        const currentVersion = localVersionData.version;
+        if (remoteVersion !== currentVersion) {
+          Alert.alert(
+            'Güncelleme Var',
+            localVersionData.message || `Yeni sürüm ${remoteVersion} mevcut.`,
+            [
+              { text: 'Daha Sonra', style: 'cancel' },
+              { text: 'Güncelle', onPress: () => Linking.openURL(localVersionData.url) }
+            ],
+            { cancelable: true }
+          );
+        }
+      } catch (e) {
+      } finally {
+        if (!ALWAYSUPDATE) {
+          await AsyncStorage.setItem('lastUpdateCheck', now.toString());
+        }
+      }
+    };
+    checkUpdate();
+  }, []);
 
   if (!fontsLoaded) return null;
 
