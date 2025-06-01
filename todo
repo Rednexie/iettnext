@@ -1,9 +1,8 @@
-durak.tsx
-- fix api connection
-
-harita.tsx - add a link to the website, where this feature is working
-- fix modal scrollability
+harita.tsx 
+- add a link to the website, where this feature is working
+- manually implement a map view, just like how it is done in the website
 
 hat.tsx 
 - fetch the departure times directly from iett.istanbul
-- add 'x' to the inputbox and remove 'yeni arama' button
+- add direction to the departure times section
+- fix modal scrollability
