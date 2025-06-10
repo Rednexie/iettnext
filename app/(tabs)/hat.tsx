@@ -87,6 +87,11 @@ export default function HatScreen() {
     try {
       const url = `${API_BASE}/api/route-stations?hatkod=${lineCode}&hatstart=x&hatend=y&langid=1`;
       const res = await fetch(url);
+      if (!res.ok) {
+        console.error(`Error loading stations, status ${res.status}`);
+        setStations([]);
+        return;
+      }
       const text = await res.text();
       const allLinks = parseAnchors(text);
       const restartIdx = allLinks.findIndex((s, i) => i > 0 && /^\s*1\./.test(s));
@@ -129,7 +134,10 @@ export default function HatScreen() {
           setSelectedIndex(-1);
         })
         .catch((e) => {
-          if (e.name !== 'AbortError') setSuggestions([]);
+          if (e.name !== 'AbortError') {
+            console.error('Error fetching suggestions:', e);
+            setSuggestions([]);
+          }
         });
     }, 400);
     // Cleanup
@@ -192,6 +200,8 @@ export default function HatScreen() {
           body: JSON.stringify({ line: item.line }),
         }),
       ]);
+      if (!htmlRes.ok) console.error(`Error fetching timetable, status ${htmlRes.status}`);
+      if (!anRes.ok) console.error(`Error fetching announcements, status ${anRes.status}`);
       const html = await htmlRes.text();
       setTimetable(parseLineTimeTable(html));
       setAnnouncements(await anRes.json());

@@ -1,4 +1,4 @@
-# iettnext – Istanbul Public Transport Companion
+# iettnext – Istanbul Public Transportation Assistant
 
 [🇹🇷 Türkçe](./README.tr.md)
 
@@ -7,55 +7,58 @@
 ### 1. **Vehicle Search Page**
 - Search by plate/door code
 - Real-time vehicle tracking
-- Departure status ("depar" indication)
-- Line information and route details
+- "Depar" status indicator
+- Route information and itinerary details
 
-### 2. **Station Search Page**
-- Smart search with suggestions
-- Arrival times and schedules (realtime)
+### 2. **Stop Search Page**
+- Smart search suggestions
+- Real-time arrival times
 - Detailed vehicle information (model, speed, features)
-- Features (IBB WiFi, USB charging, wheelchair accessibility, bike accessibility, "depar" line etc.)
+- Amenities (İBB WiFi, USB charging, wheelchair access, bicycle access, "depar" line etc.)
 
 ### 3. **Line Search Page**
-- Smart search with suggestions
+- Smart search suggestions
 - Route information and schedule
-- Route announcements (delays, changes)
+- Line announcements (delays, changes)
 
-### 4. **Interactive Map Page (Coming Soon)**
-- Live vehicle positions
-- Station and garage locations
-- Customizable map layers
+### 4. **Map Page (Coming Soon)**
+- Live vehicle locations
+- Stop and terminal locations
+- Customizable layers
 
-### 5. **Old Lines Archive**
+### 5. **Historical Lines Archive**
 - Discontinued line information
 - Historical route data
-- Reference for transport history
+- Transportation history reference
 
 ---
 
-## ✨ Key Features
+## ✨ Core Features
 
 ### 🛡️ Privacy & Performance
-- Zero data collection
-- Minimal permissions required
-- Optimized for low data usage
-- Fast loading and smooth operation
+- No data collection
+- Minimal permission requirements
+- Low data usage
+- Fast launch and smooth operation
 
 ### 🔍 Smart Search
 - Instant suggestions
 - Fuzzy matching
-- Recent searches memory
 
-### 🚌 Real-time Information
-- Live vehicle positions
+### 🚌 Live Information
+- Real-time vehicle locations
 - Accurate arrival times
 - Departure status indicators
 
 ### 🗺️ Comprehensive Data
 - Current lines and vehicles
-- Historical/removed lines
-- Station amenities details
+- Historical/discontinued lines
+- Detailed stop feature information
 
+### 🤖 AI Assistant
+- Natural language search
+- Detailed toolkit
+- Unlimited usage
 ---
 
 ## 🏗️ Technologies Used
@@ -66,27 +69,26 @@
 
 ---
 
-## 🙏 Acknowledgements
-- Istanbul Electric Tram and Tunnel Company (IETT) for open(!) data
-- Expo and React Native
-- Github, Deno for hosting
+## 🙏 Acknowledgments
+- Istanbul Electricity Tramway and Tunnel (IETT) for open(!) data
+- Expo and React Native teams
+- Github and Deno for hosting
 
 ---
 
 # 📸 Screenshots
 
-
-## Main Page
-![Main Page](https://github.com/user-attachments/assets/388456d5-83ab-4e7c-ac97-2f9b47c853f9)
+## Home Page
+![Home Page](https://github.com/user-attachments/assets/388456d5-83ab-4e7c-ac97-2f9b47c853f9)
 
 ## Vehicle Search
 ![Vehicle Search 1](https://github.com/user-attachments/assets/74216286-f64f-4fe9-a632-a38cd7edf030)
 ![Vehicle Search 2](https://github.com/user-attachments/assets/c3c60567-9563-4dd2-b8bc-cc75bcefec9f)
 ![Vehicle Search 3](https://github.com/user-attachments/assets/cc8f2e27-ee23-422f-bc28-8c122c4f8566)
 
-## Station Search
-![Station Search 1](https://github.com/user-attachments/assets/5a13877f-84b9-454d-9132-54834969bab1)
-![Station Search 2](https://github.com/user-attachments/assets/1605009d-1255-4e09-b890-e613acfe0025)
+## Stop Search
+![Stop Search 1](https://github.com/user-attachments/assets/5a13877f-84b9-454d-9132-54834969bab1)
+![Stop Search 2](https://github.com/user-attachments/assets/1605009d-1255-4e09-b890-e613acfe0025)
 
 ## Line Search
 ![Line Search 1](https://github.com/user-attachments/assets/0496521a-cd5c-4e38-908f-7a0beee769a7)

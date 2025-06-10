@@ -106,6 +106,14 @@ export default function HomeScreen() {
             <Text style={styles.buttonText}>Eski Hatlar</Text>
           </TouchableOpacity>
         </View>
+        {/* AI Yardımcısı Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>AI Asistanı</Text>
+          <Text style={styles.cardDesc}>Türkçe olarak yapay zeka asistanı ile sohbet edin</Text>
+          <TouchableOpacity style={styles.button} onPress={() => router.push('/ai')}>
+            <Text style={styles.buttonText}>AI Asistanı</Text>
+          </TouchableOpacity>
+        </View>
         {/* GitHub Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>GitHub</Text>

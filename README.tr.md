@@ -44,7 +44,6 @@
 ### 🔍 Akıllı Arama
 - Anında öneriler
 - Bulanık eşleştirme
-- Son aramalar hafızası
 
 ### 🚌 Anlık Bilgi
 - Canlı araç konumları
@@ -55,6 +54,12 @@
 - Güncel hatlar ve araçlar
 - Tarihi/kaldırılan hatlar
 - Durak özellik detayları
+
+### 🤖 AI Asistanı
+- Doğal dil ile arama
+- Detaylı tool kit
+- Sınırsız kullanım
+
 
 ---
 

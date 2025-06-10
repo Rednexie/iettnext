@@ -3,11 +3,10 @@ import React from 'react';
 import { Platform } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { FontAwesome5, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { FontAwesome5, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -78,6 +77,15 @@ export default function TabLayout() {
           title: 'Eski Hatlar',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="history" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="ai"
+        options={{
+          title: 'AI',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="star-four-points" color={color} size={size} />
           ),
         }}
       />

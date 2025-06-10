@@ -1,0 +1,1396 @@
+Hi, 
+
+The ai feature, returns:
+
+content of the assistant's message, inside the content property in response body
+tool call, inside tool property in response body
+and data, returned by the tool call inside the data property in response body
+
+We have to:
+directly display the content of the assistant's message
+if a tool call is made, parse the data returned by the tool, based on which tool it is.
+
+i will give the explanations and examples data returned by the tool call.
+
+
+get_time_table: 
+
+```json
+{
+    "content": "132P hattının hareket saatlerini kontrol ediyorum. Lütfen biraz bekleyin.",
+    "tool": "get_time_table",
+    "data": [
+      {
+        "direction": "RECEP TAYYİP ERDOĞAN CADDESİ KALKIŞ",
+        "times": [
+          {
+            "weekdays": "05:20",
+            "saturday": "05:30",
+            "sunday": "05:30"
+          },
+          {
+            "weekdays": "05:40",
+            "saturday": "05:45",
+            "sunday": "05:50"
+          },
+          {
+            "weekdays": "05:55",
+            "saturday": "06:00",
+            "sunday": "06:10"
+          },
+          {
+            "weekdays": "06:10",
+            "saturday": "06:10",
+            "sunday": "06:30"
+          },
+          {
+            "weekdays": "06:17",
+            "saturday": "06:20",
+            "sunday": "06:45"
+          },
+          {
+            "weekdays": "06:24",
+            "saturday": "06:30",
+            "sunday": "07:00"
+          },
+          {
+            "weekdays": "06:31",
+            "saturday": "06:40",
+            "sunday": "07:15"
+          },
+          {
+            "weekdays": "06:38",
+            "saturday": "06:50",
+            "sunday": "07:30"
+          },
+          {
+            "weekdays": "06:45",
+            "saturday": "07:00",
+            "sunday": "07:40"
+          },
+          {
+            "weekdays": "06:52",
+            "saturday": "07:10",
+            "sunday": "07:50"
+          },
+          {
+            "weekdays": "06:58",
+            "saturday": "07:20",
+            "sunday": "08:00"
+          },
+          {
+            "weekdays": "07:04",
+            "saturday": "07:30",
+            "sunday": "08:12"
+          },
+          {
+            "weekdays": "07:10",
+            "saturday": "07:40",
+            "sunday": "08:24"
+          },
+          {
+            "weekdays": "07:16",
+            "saturday": "07:50",
+            "sunday": "08:36"
+          },
+          {
+            "weekdays": "07:22",
+            "saturday": "08:00",
+            "sunday": "08:48"
+          },
+          {
+            "weekdays": "07:28",
+            "saturday": "08:12",
+            "sunday": "09:00"
+          },
+          {
+            "weekdays": "07:34",
+            "saturday": "08:24",
+            "sunday": "09:12"
+          },
+          {
+            "weekdays": "07:42",
+            "saturday": "08:36",
+            "sunday": "09:24"
+          },
+          {
+            "weekdays": "07:50",
+            "saturday": "08:48",
+            "sunday": "09:36"
+          },
+          {
+            "weekdays": "08:00",
+            "saturday": "09:00",
+            "sunday": "09:48"
+          },
+          {
+            "weekdays": "08:10",
+            "saturday": "09:12",
+            "sunday": "10:00"
+          },
+          {
+            "weekdays": "08:20",
+            "saturday": "09:24",
+            "sunday": "10:15"
+          },
+          {
+            "weekdays": "08:30",
+            "saturday": "09:36",
+            "sunday": "10:30"
+          },
+          {
+            "weekdays": "08:45",
+            "saturday": "09:48",
+            "sunday": "10:45"
+          },
+          {
+            "weekdays": "09:00",
+            "saturday": "10:00",
+            "sunday": "11:00"
+          },
+          {
+            "weekdays": "09:15",
+            "saturday": "10:12",
+            "sunday": "11:12"
+          },
+          {
+            "weekdays": "09:30",
+            "saturday": "10:24",
+            "sunday": "11:24"
+          },
+          {
+            "weekdays": "09:45",
+            "saturday": "10:36",
+            "sunday": "11:36"
+          },
+          {
+            "weekdays": "10:00",
+            "saturday": "10:48",
+            "sunday": "11:48"
+          },
+          {
+            "weekdays": "10:15",
+            "saturday": "11:00",
+            "sunday": "12:00"
+          },
+          {
+            "weekdays": "10:30",
+            "saturday": "11:10",
+            "sunday": "12:12"
+          },
+          {
+            "weekdays": "10:45",
+            "saturday": "11:20",
+            "sunday": "12:24"
+          },
+          {
+            "weekdays": "11:00",
+            "saturday": "11:30",
+            "sunday": "12:36"
+          },
+          {
+            "weekdays": "11:12",
+            "saturday": "11:40",
+            "sunday": "12:48"
+          },
+          {
+            "weekdays": "11:24",
+            "saturday": "11:50",
+            "sunday": "13:00"
+          },
+          {
+            "weekdays": "11:36",
+            "saturday": "12:00",
+            "sunday": "13:15"
+          },
+          {
+            "weekdays": "11:48",
+            "saturday": "12:10",
+            "sunday": "13:30"
+          },
+          {
+            "weekdays": "12:00",
+            "saturday": "12:20",
+            "sunday": "13:45"
+          },
+          {
+            "weekdays": "12:12",
+            "saturday": "12:30",
+            "sunday": "14:00"
+          },
+          {
+            "weekdays": "12:24",
+            "saturday": "12:40",
+            "sunday": "14:15"
+          },
+          {
+            "weekdays": "12:36",
+            "saturday": "12:50",
+            "sunday": "14:30"
+          },
+          {
+            "weekdays": "12:48",
+            "saturday": "13:00",
+            "sunday": "14:45"
+          },
+          {
+            "weekdays": "13:00",
+            "saturday": "13:12",
+            "sunday": "15:00"
+          },
+          {
+            "weekdays": "13:12",
+            "saturday": "13:24",
+            "sunday": "15:15"
+          },
+          {
+            "weekdays": "13:24",
+            "saturday": "13:36",
+            "sunday": "15:30"
+          },
+          {
+            "weekdays": "13:36",
+            "saturday": "13:48",
+            "sunday": "15:45"
+          },
+          {
+            "weekdays": "13:48",
+            "saturday": "14:00",
+            "sunday": "16:00"
+          },
+          {
+            "weekdays": "14:00",
+            "saturday": "14:12",
+            "sunday": "16:15"
+          },
+          {
+            "weekdays": "14:12",
+            "saturday": "14:24",
+            "sunday": "16:30"
+          },
+          {
+            "weekdays": "14:24",
+            "saturday": "14:36",
+            "sunday": "16:45"
+          },
+          {
+            "weekdays": "14:36",
+            "saturday": "14:48",
+            "sunday": "17:00"
+          },
+          {
+            "weekdays": "14:48",
+            "saturday": "15:00",
+            "sunday": "17:15"
+          },
+          {
+            "weekdays": "15:00",
+            "saturday": "15:15",
+            "sunday": "17:30"
+          },
+          {
+            "weekdays": "15:12",
+            "saturday": "15:30",
+            "sunday": "17:45"
+          },
+          {
+            "weekdays": "15:24",
+            "saturday": "15:45",
+            "sunday": "18:00"
+          },
+          {
+            "weekdays": "15:36",
+            "saturday": "16:00",
+            "sunday": "18:15"
+          },
+          {
+            "weekdays": "15:48",
+            "saturday": "16:15",
+            "sunday": "18:30"
+          },
+          {
+            "weekdays": "16:00",
+            "saturday": "16:30",
+            "sunday": "18:45"
+          },
+          {
+            "weekdays": "16:10",
+            "saturday": "16:45",
+            "sunday": "19:00"
+          },
+          {
+            "weekdays": "16:20",
+            "saturday": "17:00",
+            "sunday": "19:15"
+          },
+          {
+            "weekdays": "16:30",
+            "saturday": "17:15",
+            "sunday": "19:30"
+          },
+          {
+            "weekdays": "16:40",
+            "saturday": "17:30",
+            "sunday": "19:45"
+          },
+          {
+            "weekdays": "16:50",
+            "saturday": "17:45",
+            "sunday": "20:00"
+          },
+          {
+            "weekdays": "17:00",
+            "saturday": "18:00",
+            "sunday": "20:15"
+          },
+          {
+            "weekdays": "17:12",
+            "saturday": "18:15",
+            "sunday": "20:30"
+          },
+          {
+            "weekdays": "17:24",
+            "saturday": "18:30",
+            "sunday": "20:50"
+          },
+          {
+            "weekdays": "17:36",
+            "saturday": "18:45",
+            "sunday": "21:10"
+          },
+          {
+            "weekdays": "17:48",
+            "saturday": "19:00",
+            "sunday": "21:30"
+          },
+          {
+            "weekdays": "18:00",
+            "saturday": "19:15",
+            "sunday": ""
+          },
+          {
+            "weekdays": "18:15",
+            "saturday": "19:30",
+            "sunday": ""
+          },
+          {
+            "weekdays": "18:30",
+            "saturday": "19:45",
+            "sunday": ""
+          },
+          {
+            "weekdays": "18:45",
+            "saturday": "20:00",
+            "sunday": ""
+          },
+          {
+            "weekdays": "19:00",
+            "saturday": "20:15",
+            "sunday": ""
+          },
+          {
+            "weekdays": "19:15",
+            "saturday": "20:30",
+            "sunday": ""
+          },
+          {
+            "weekdays": "19:30",
+            "saturday": "20:45",
+            "sunday": ""
+          },
+          {
+            "weekdays": "19:45",
+            "saturday": "21:00",
+            "sunday": ""
+          },
+          {
+            "weekdays": "20:00",
+            "saturday": "21:15",
+            "sunday": ""
+          },
+          {
+            "weekdays": "20:15",
+            "saturday": "21:30",
+            "sunday": ""
+          },
+          {
+            "weekdays": "20:30",
+            "saturday": "",
+            "sunday": ""
+          },
+          {
+            "weekdays": "20:45",
+            "saturday": "",
+            "sunday": ""
+          },
+          {
+            "weekdays": "21:00",
+            "saturday": "",
+            "sunday": ""
+          },
+          {
+            "weekdays": "21:15",
+            "saturday": "",
+            "sunday": ""
+          },
+          {
+            "weekdays": "21:30",
+            "saturday": "",
+            "sunday": ""
+          }
+        ]
+      },
+      {
+        "direction": "KARTAL KALKIŞ",
+        "times": [
+          {
+            "weekdays": "06:30",
+            "saturday": "07:00",
+            "sunday": "07:00"
+          },
+          {
+            "weekdays": "06:50",
+            "saturday": "07:15",
+            "sunday": "07:20"
+          },
+          {
+            "weekdays": "07:10",
+            "saturday": "07:30",
+            "sunday": "07:40"
+          },
+          {
+            "weekdays": "07:30",
+            "saturday": "07:45",
+            "sunday": "08:00"
+          },
+          {
+            "weekdays": "07:45",
+            "saturday": "08:00",
+            "sunday": "08:15"
+          },
+          {
+            "weekdays": "08:00",
+            "saturday": "08:12",
+            "sunday": "08:30"
+          },
+          {
+            "weekdays": "08:10",
+            "saturday": "08:24",
+            "sunday": "08:45"
+          },
+          {
+            "weekdays": "08:20",
+            "saturday": "08:36",
+            "sunday": "09:00"
+          },
+          {
+            "weekdays": "08:30",
+            "saturday": "08:48",
+            "sunday": "09:15"
+          },
+          {
+            "weekdays": "08:40",
+            "saturday": "09:00",
+            "sunday": "09:30"
+          },
+          {
+            "weekdays": "08:50",
+            "saturday": "09:10",
+            "sunday": "09:45"
+          },
+          {
+            "weekdays": "09:00",
+            "saturday": "09:20",
+            "sunday": "10:00"
+          },
+          {
+            "weekdays": "09:10",
+            "saturday": "09:30",
+            "sunday": "10:12"
+          },
+          {
+            "weekdays": "09:20",
+            "saturday": "09:40",
+            "sunday": "10:24"
+          },
+          {
+            "weekdays": "09:30",
+            "saturday": "09:50",
+            "sunday": "10:36"
+          },
+          {
+            "weekdays": "09:40",
+            "saturday": "10:00",
+            "sunday": "10:48"
+          },
+          {
+            "weekdays": "09:50",
+            "saturday": "10:12",
+            "sunday": "11:00"
+          },
+          {
+            "weekdays": "10:00",
+            "saturday": "10:24",
+            "sunday": "11:12"
+          },
+          {
+            "weekdays": "10:10",
+            "saturday": "10:36",
+            "sunday": "11:24"
+          },
+          {
+            "weekdays": "10:20",
+            "saturday": "10:48",
+            "sunday": "11:36"
+          },
+          {
+            "weekdays": "10:30",
+            "saturday": "11:00",
+            "sunday": "11:48"
+          },
+          {
+            "weekdays": "10:40",
+            "saturday": "11:12",
+            "sunday": "12:00"
+          },
+          {
+            "weekdays": "10:50",
+            "saturday": "11:24",
+            "sunday": "12:15"
+          },
+          {
+            "weekdays": "11:00",
+            "saturday": "11:36",
+            "sunday": "12:30"
+          },
+          {
+            "weekdays": "11:15",
+            "saturday": "11:48",
+            "sunday": "12:45"
+          },
+          {
+            "weekdays": "11:30",
+            "saturday": "12:00",
+            "sunday": "13:00"
+          },
+          {
+            "weekdays": "11:45",
+            "saturday": "12:12",
+            "sunday": "13:15"
+          },
+          {
+            "weekdays": "12:00",
+            "saturday": "12:24",
+            "sunday": "13:30"
+          },
+          {
+            "weekdays": "12:15",
+            "saturday": "12:36",
+            "sunday": "13:45"
+          },
+          {
+            "weekdays": "12:30",
+            "saturday": "12:48",
+            "sunday": "14:00"
+          },
+          {
+            "weekdays": "12:45",
+            "saturday": "13:00",
+            "sunday": "14:15"
+          },
+          {
+            "weekdays": "13:00",
+            "saturday": "13:12",
+            "sunday": "14:30"
+          },
+          {
+            "weekdays": "13:12",
+            "saturday": "13:24",
+            "sunday": "14:45"
+          },
+          {
+            "weekdays": "13:24",
+            "saturday": "13:36",
+            "sunday": "15:00"
+          },
+          {
+            "weekdays": "13:36",
+            "saturday": "13:48",
+            "sunday": "15:15"
+          },
+          {
+            "weekdays": "13:48",
+            "saturday": "14:00",
+            "sunday": "15:30"
+          },
+          {
+            "weekdays": "14:00",
+            "saturday": "14:12",
+            "sunday": "15:45"
+          },
+          {
+            "weekdays": "14:10",
+            "saturday": "14:24",
+            "sunday": "16:00"
+          },
+          {
+            "weekdays": "14:20",
+            "saturday": "14:36",
+            "sunday": "16:15"
+          },
+          {
+            "weekdays": "14:30",
+            "saturday": "14:48",
+            "sunday": "16:30"
+          },
+          {
+            "weekdays": "14:40",
+            "saturday": "15:00",
+            "sunday": "16:45"
+          },
+          {
+            "weekdays": "14:50",
+            "saturday": "15:12",
+            "sunday": "17:00"
+          },
+          {
+            "weekdays": "15:00",
+            "saturday": "15:24",
+            "sunday": "17:15"
+          },
+          {
+            "weekdays": "15:12",
+            "saturday": "15:36",
+            "sunday": "17:30"
+          },
+          {
+            "weekdays": "15:24",
+            "saturday": "15:48",
+            "sunday": "17:45"
+          },
+          {
+            "weekdays": "15:36",
+            "saturday": "16:00",
+            "sunday": "18:00"
+          },
+          {
+            "weekdays": "15:48",
+            "saturday": "16:12",
+            "sunday": "18:15"
+          },
+          {
+            "weekdays": "16:00",
+            "saturday": "16:24",
+            "sunday": "18:30"
+          },
+          {
+            "weekdays": "16:12",
+            "saturday": "16:36",
+            "sunday": "18:45"
+          },
+          {
+            "weekdays": "16:24",
+            "saturday": "16:48",
+            "sunday": "19:00"
+          },
+          {
+            "weekdays": "16:36",
+            "saturday": "17:00",
+            "sunday": "19:15"
+          },
+          {
+            "weekdays": "16:48",
+            "saturday": "17:15",
+            "sunday": "19:30"
+          },
+          {
+            "weekdays": "17:00",
+            "saturday": "17:30",
+            "sunday": "19:45"
+          },
+          {
+            "weekdays": "17:12",
+            "saturday": "17:45",
+            "sunday": "20:00"
+          },
+          {
+            "weekdays": "17:24",
+            "saturday": "18:00",
+            "sunday": "20:15"
+          },
+          {
+            "weekdays": "17:36",
+            "saturday": "18:15",
+            "sunday": "20:30"
+          },
+          {
+            "weekdays": "17:48",
+            "saturday": "18:30",
+            "sunday": "20:45"
+          },
+          {
+            "weekdays": "18:00",
+            "saturday": "18:45",
+            "sunday": "21:00"
+          },
+          {
+            "weekdays": "18:12",
+            "saturday": "19:00",
+            "sunday": "21:15"
+          },
+          {
+            "weekdays": "18:24",
+            "saturday": "19:15",
+            "sunday": "21:30"
+          },
+          {
+            "weekdays": "18:36",
+            "saturday": "19:30",
+            "sunday": "21:45"
+          },
+          {
+            "weekdays": "18:48",
+            "saturday": "19:45",
+            "sunday": "22:00"
+          },
+          {
+            "weekdays": "19:00",
+            "saturday": "20:00",
+            "sunday": "22:15"
+          },
+          {
+            "weekdays": "19:12",
+            "saturday": "20:15",
+            "sunday": "22:30"
+          },
+          {
+            "weekdays": "19:24",
+            "saturday": "20:30",
+            "sunday": "22:45"
+          },
+          {
+            "weekdays": "19:36",
+            "saturday": "20:45",
+            "sunday": "23:00"
+          },
+          {
+            "weekdays": "19:48",
+            "saturday": "21:00",
+            "sunday": "23:15"
+          },
+          {
+            "weekdays": "20:00",
+            "saturday": "21:15",
+            "sunday": "23:30"
+          },
+          {
+            "weekdays": "20:12",
+            "saturday": "21:30",
+            "sunday": ""
+          },
+          {
+            "weekdays": "20:24",
+            "saturday": "21:45",
+            "sunday": ""
+          },
+          {
+            "weekdays": "20:36",
+            "saturday": "22:00",
+            "sunday": ""
+          },
+          {
+            "weekdays": "20:48",
+            "saturday": "22:15",
+            "sunday": ""
+          },
+          {
+            "weekdays": "21:00",
+            "saturday": "22:30",
+            "sunday": ""
+          },
+          {
+            "weekdays": "21:12",
+            "saturday": "22:45",
+            "sunday": ""
+          },
+          {
+            "weekdays": "21:24",
+            "saturday": "23:00",
+            "sunday": ""
+          },
+          {
+            "weekdays": "21:36",
+            "saturday": "23:15",
+            "sunday": ""
+          },
+          {
+            "weekdays": "21:48",
+            "saturday": "23:30",
+            "sunday": ""
+          },
+          {
+            "weekdays": "22:00",
+            "saturday": "23:45",
+            "sunday": ""
+          },
+          {
+            "weekdays": "22:15",
+            "saturday": "",
+            "sunday": ""
+          },
+          {
+            "weekdays": "22:30",
+            "saturday": "",
+            "sunday": ""
+          },
+          {
+            "weekdays": "22:45",
+            "saturday": "",
+            "sunday": ""
+          },
+          {
+            "weekdays": "23:00",
+            "saturday": "",
+            "sunday": ""
+          }
+        ]
+      }
+    ]
+  }
+```
+
+get_stops:
+```json
+{
+    "content": "E-3 hattının duraklarını listelemek için sorguluyorum.",
+    "tool": "get_stops",
+    "data": [
+      "SABİHA GÖKÇEN HAVALİMANI",
+      "SABİHA GÖKÇEN NİZAMİYE",
+      "TEKNOPARK İSTANBUL",
+      "TEKNOPARK BULVARI",
+      "OSMANLI KAVŞAĞI",
+      "HEZARFEN MESLEKİ VE TEKNİK ANADOLU LİSESİ",
+      "HARMANDERE",
+      "OTOYOL KAVŞAĞI",
+      "KEMALPAŞA",
+      "TEPE ÜSTÜ",
+      "KAVACIK KÖPRÜSÜ",
+      "4.LEVENT",
+      "SULTAN SELİM MAHALLESİ",
+      "4.LEVENT METRO",
+      "FABRİKALAR"
+    ]
+  }
+```
+
+get_arrivals: ```json
+{
+    "content": "Listing the buses arriving at Güzelyalı Köprüsü stop.",
+    "tool": "get_arrivals",
+    "data": [
+      {
+        "station": "GÜZELYALI KÖPRÜSÜ(KADIKÖY)",
+        "arrivals": [
+          {
+            "depar": false,
+            "hatkodu": "130Ş",
+            "saat": "16:44",
+            "dakika": 1,
+            "son_hiz": "15",
+            "hatadi": "ŞİFA MAHALLESİ - KADIKÖY",
+            "kapino": "C-390",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.28197583333333,40.85981916666666"
+          },
+          {
+            "depar": false,
+            "hatkodu": "KM13",
+            "saat": "16:44",
+            "dakika": 1,
+            "son_hiz": "4",
+            "hatadi": "TUZLA - PENDİK METRO/ YHT / PENDİK",
+            "kapino": "C-476",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.281865,40.85989133333333"
+          },
+          {
+            "depar": false,
+            "hatkodu": "500T",
+            "saat": "16:46",
+            "dakika": 3,
+            "son_hiz": "40",
+            "hatadi": "TUZLA ŞİFA MAHALLESİ - CEVİZLİBAĞ",
+            "kapino": "C-461",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.29668883333333,40.85103016666667"
+          },
+          {
+            "depar": false,
+            "hatkodu": "130Ş",
+            "saat": "16:48",
+            "dakika": 5,
+            "son_hiz": "37",
+            "hatadi": "ŞİFA MAHALLESİ - KADIKÖY",
+            "kapino": "C-391",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.300183999999998,40.8479125"
+          },
+          {
+            "depar": false,
+            "hatkodu": "500T",
+            "saat": "16:48",
+            "dakika": 5,
+            "son_hiz": "74",
+            "hatadi": "TUZLA ŞİFA MAHALLESİ - CEVİZLİBAĞ",
+            "kapino": "C-462",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.307019500000003,40.84396483333333"
+          },
+          {
+            "depar": false,
+            "hatkodu": "KM12",
+            "saat": "16:48",
+            "dakika": 5,
+            "son_hiz": "18",
+            "hatadi": "TUZLA DENİZ HARP OKULU - KARTAL METRO",
+            "kapino": "C-472",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.294986499999997,40.84581333333333"
+          },
+          {
+            "depar": false,
+            "hatkodu": "130Ş",
+            "saat": "16:54",
+            "dakika": 11,
+            "son_hiz": "12",
+            "hatadi": "ŞİFA MAHALLESİ - KADIKÖY",
+            "kapino": "C-392",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.351295166666667,40.827011"
+          },
+          {
+            "depar": false,
+            "hatkodu": "500T",
+            "saat": "16:59",
+            "dakika": 16,
+            "son_hiz": "37",
+            "hatadi": "TUZLA ŞİFA MAHALLESİ - CEVİZLİBAĞ",
+            "kapino": "C-463",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.361429666666663,40.83068883333333"
+          },
+          {
+            "depar": false,
+            "hatkodu": "KM13",
+            "saat": "16:59",
+            "dakika": 16,
+            "son_hiz": "0",
+            "hatadi": "TUZLA - PENDİK METRO/ YHT / PENDİK",
+            "kapino": "C-477",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.30546283333333,40.8182025"
+          },
+          {
+            "depar": false,
+            "hatkodu": "133Ş",
+            "saat": "17:01",
+            "dakika": 18,
+            "son_hiz": "42",
+            "hatadi": "ÇAĞDAŞKENT/ ŞEKERPINAR MAH. - KARTAL",
+            "kapino": "C-308",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.36564866666667,40.8542755"
+          },
+          {
+            "depar": false,
+            "hatkodu": "130Ş",
+            "saat": "17:01",
+            "dakika": 18,
+            "son_hiz": "0",
+            "hatadi": "ŞİFA MAHALLESİ - KADIKÖY",
+            "kapino": "C-393",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.360041500000005,40.838123833333334"
+          },
+          {
+            "depar": false,
+            "hatkodu": "500T",
+            "saat": "17:02",
+            "dakika": 19,
+            "son_hiz": "36",
+            "hatadi": "TUZLA ŞİFA MAHALLESİ - CEVİZLİBAĞ",
+            "kapino": "C-464",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.367537333333335,40.841291"
+          }
+        ]
+      },
+      {
+        "station": "GÜZELYALI KÖPRÜSÜ(TUZLA)",
+        "arrivals": [
+          {
+            "depar": false,
+            "hatkodu": "500T",
+            "saat": "16:47",
+            "dakika": 4,
+            "son_hiz": "20",
+            "hatadi": "TUZLA ŞİFA MAHALLESİ - CEVİZLİBAĞ",
+            "kapino": "C-418",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.262601166666666,40.876935333333336"
+          },
+          {
+            "depar": false,
+            "hatkodu": "500T",
+            "saat": "16:47",
+            "dakika": 4,
+            "son_hiz": "39",
+            "hatadi": "TUZLA ŞİFA MAHALLESİ - CEVİZLİBAĞ",
+            "kapino": "C-419",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.2622735,40.87732233333334"
+          },
+          {
+            "depar": true,
+            "hatkodu": "130Ş",
+            "saat": "16:52",
+            "dakika": 9,
+            "son_hiz": "38",
+            "hatadi": "ŞİFA MAHALLESİ - KADIKÖY",
+            "kapino": "C-405",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.238992999999997,40.88782166666667"
+          },
+          {
+            "depar": false,
+            "hatkodu": "500T",
+            "saat": "16:53",
+            "dakika": 10,
+            "son_hiz": "0",
+            "hatadi": "TUZLA ŞİFA MAHALLESİ - CEVİZLİBAĞ",
+            "kapino": "C-422",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 0,
+            "bisiklet": 0,
+            "son_konum": "29.192960666666668,40.9120345"
+          },
+          {
+            "depar": true,
+            "hatkodu": "500L",
+            "saat": "16:54",
+            "dakika": 11,
+            "son_hiz": "46",
+            "hatadi": "LEVENT - CEVİZLİBAĞ",
+            "kapino": "C-420",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.169921,40.91919966666667"
+          },
+          {
+            "depar": false,
+            "hatkodu": "500T",
+            "saat": "16:54",
+            "dakika": 11,
+            "son_hiz": "61",
+            "hatadi": "TUZLA ŞİFA MAHALLESİ - CEVİZLİBAĞ",
+            "kapino": "C-421",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.18927366666667,40.9132405"
+          },
+          {
+            "depar": false,
+            "hatkodu": "130Ş",
+            "saat": "17:00",
+            "dakika": 17,
+            "son_hiz": "0",
+            "hatadi": "ŞİFA MAHALLESİ - KADIKÖY",
+            "kapino": "C-376",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.1759765,40.91740566666667"
+          },
+          {
+            "depar": true,
+            "hatkodu": "500L",
+            "saat": "17:05",
+            "dakika": 22,
+            "son_hiz": "65",
+            "hatadi": "LEVENT - CEVİZLİBAĞ",
+            "kapino": "C-423",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.137110833333335,40.937175833333335"
+          },
+          {
+            "depar": false,
+            "hatkodu": "KM13",
+            "saat": "17:06",
+            "dakika": 23,
+            "son_hiz": "0",
+            "hatadi": "TUZLA - PENDİK METRO/ YHT / PENDİK",
+            "kapino": "C-305",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.227461833333336,40.8759215"
+          },
+          {
+            "depar": false,
+            "hatkodu": "130Ş",
+            "saat": "17:09",
+            "dakika": 26,
+            "son_hiz": "48",
+            "hatadi": "ŞİFA MAHALLESİ - KADIKÖY",
+            "kapino": "C-377",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.120508166666664,40.9505905"
+          },
+          {
+            "depar": false,
+            "hatkodu": "500T",
+            "saat": "17:09",
+            "dakika": 26,
+            "son_hiz": "57",
+            "hatadi": "TUZLA ŞİFA MAHALLESİ - CEVİZLİBAĞ",
+            "kapino": "C-425",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.102894,40.96820966666667"
+          },
+          {
+            "depar": false,
+            "hatkodu": "KM12",
+            "saat": "17:09",
+            "dakika": 26,
+            "son_hiz": "0",
+            "hatadi": "TUZLA DENİZ HARP OKULU - KARTAL METRO",
+            "kapino": "C-471",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.208472833333335,40.906610500000006"
+          },
+          {
+            "depar": false,
+            "hatkodu": "133Ş",
+            "saat": "17:11",
+            "dakika": 28,
+            "son_hiz": "0",
+            "hatadi": "ÇAĞDAŞKENT/ ŞEKERPINAR MAH. - KARTAL",
+            "kapino": "C-311",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.193243833333334,40.88659566666667"
+          },
+          {
+            "depar": false,
+            "hatkodu": "130Ş",
+            "saat": "17:19",
+            "dakika": 36,
+            "son_hiz": "45",
+            "hatadi": "ŞİFA MAHALLESİ - KADIKÖY",
+            "kapino": "C-378",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.064962666666663,40.9954355"
+          },
+          {
+            "depar": true,
+            "hatkodu": "130Ş",
+            "saat": "17:19",
+            "dakika": 36,
+            "son_hiz": "54",
+            "hatadi": "ŞİFA MAHALLESİ - KADIKÖY",
+            "kapino": "C-406",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.092828500000003,40.983110333333336"
+          },
+          {
+            "depar": false,
+            "hatkodu": "500T",
+            "saat": "17:22",
+            "dakika": 39,
+            "son_hiz": "78",
+            "hatadi": "TUZLA ŞİFA MAHALLESİ - CEVİZLİBAĞ",
+            "kapino": "C-427",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.099226166666668,41.076853666666665"
+          },
+          {
+            "depar": false,
+            "hatkodu": "500T",
+            "saat": "17:22",
+            "dakika": 39,
+            "son_hiz": "47",
+            "hatadi": "TUZLA ŞİFA MAHALLESİ - CEVİZLİBAĞ",
+            "kapino": "C-428",
+            "ototip": "ÖZTAŞ ULAŞIM A.Ş",
+            "wifi": 0,
+            "klima": 0,
+            "usb": 1,
+            "engelli": 1,
+            "bisiklet": 0,
+            "son_konum": "29.05563066666667,41.09096433333334"
+          }
+        ]
+      }
+    ]
+  }
+```
+
+
+get_vehicle_info: ```json
+{
+    "content": "K1769 kapı numaralı aracın model bilgisini sorguluyorum. Lütfen bekleyin.",
+    "tool": "get_vehicle_info",
+    "data": {
+      "KapıKodu": "K1769",
+      "plaka": "34TP9944",
+      "Garaj": "KURTKÖY",
+      "hat": "Çalışmıyor",
+      "marka": "KARSAN/AVANCITY S PLUS 2013",
+      "kapasite": "41/148 (KORUKLU)",
+      "özellikler": "wifi, engelli",
+      "konum": "Millet Caddesi, Yenişehir Mahallesi",
+      "yer": "Millet Caddesi, Pendik",
+      "hiz": 0,
+      "operator": "İETT",
+      "tamkonum": "40.92854416666667, 29.314739",
+      "konumSaati": "07-06-2025 15:10:06"
+    }
+  }
+
+```
+
+You will display the data returned by the tool inside the proper style.
+You can get inspirations from the files in the app folder, for the displaying process.
+
