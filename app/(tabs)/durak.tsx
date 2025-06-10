@@ -96,7 +96,7 @@ function ArrivalCard({ arrival }: { arrival: Arrival }) {
         {arrival.hatkodu}
         <Text style={[styles.resultHeaderText, { color: '#8a6cf1' }]}> ⇒ {arrival.saat} ({arrival.dakika} dk) {arrival.son_hiz} km/sa</Text>
       </Text>
-      <Text style={styles.resultHeaderText}>{arrival.hatadi + (arrival.depar ? '-' : '')}</Text>
+      <Text style={styles.resultHeaderText}>{arrival.hatadi + (arrival.depar == true ? '-' : '')}</Text>
       <Text style={styles.carInfo} selectable={true}>{arrival.kapino} ({arrival.ototip})</Text>
       <View style={styles.carInfoRow}>
         <FontAwesome5 name="wifi" size={18} color={arrival.wifi ? '#4ade80' : '#ef4444'} style={styles.featureIcon} />

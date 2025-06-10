@@ -6,3 +6,6 @@ hat.tsx
 - fetch the departure times directly from iett.istanbul
 - add direction to the departure times section
 - fix modal scrollability
+
+durak.tsx
+- fix depar
