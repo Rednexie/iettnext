@@ -1,9 +1,22 @@
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import React, { useEffect } from 'react';
-import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View, Animated, LayoutAnimation } from 'react-native';
 import localVersionData from '../../assets/version.json';
+import { Ionicons } from '@expo/vector-icons';
+
+
+
+const API_BASE = 'https://iett.rednexie.workers.dev';
+
+interface Announcement {
+  id: string | number;
+  title: string;
+  description: string;
+  startDate: string;
+  url: string;
+}
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -13,9 +26,61 @@ export default function HomeScreen() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Configure layout animation for smooth expand/collapse
+  const toggleExpand = () => {
+    LayoutAnimation.configureNext({
+      duration: 200,
+      update: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity,
+      },
+      create: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity,
+      },
+    });
+    setIsExpanded(!isExpanded);
+  };
 
   // Debug flag to always trigger update prompt
   const ALWAYSUPDATE = false;
+
+  // Fetch announcements
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/main-announcements`);
+
+        const data = await response.json();
+        // console.log(data)
+        setAnnouncements(data); // Store all announcements
+      } catch (err) {
+        console.error('Error fetching announcements:', err);
+        setError('Duyurular yüklenemedi. Lütfen daha sonra tekrar deneyiniz.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnnouncements();
+  }, []);
+
+  // Format date to Turkish locale
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('tr-TR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   // Daily update check
   useEffect(() => {
@@ -64,6 +129,73 @@ export default function HomeScreen() {
     <ScrollView style={{ flex: 1, backgroundColor: '#0d0d1a' }} contentContainerStyle={{ flexGrow: 1 }}>
       <View style={styles.header}>
         <Text style={styles.headerText}>iettnext</Text>
+      </View>
+      
+      {/* Announcements Section */}
+      <View style={styles.announcementCard}>
+        <TouchableOpacity 
+          style={styles.announcementHeader}
+          onPress={toggleExpand}
+          activeOpacity={0.8}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons 
+              name="megaphone" 
+              size={20} 
+              color="#8a6cf1" 
+              style={{ marginRight: 8 }}
+            />
+            <Text style={styles.announcementTitle}>Duyurular</Text>
+            {announcements.length > 0 && (
+              <Text style={styles.announcementCount}>
+                ({announcements.length} duyuru)
+              </Text>
+            )}
+          </View>
+          <Ionicons 
+            name={isExpanded ? 'chevron-up' : 'chevron-down'}
+            size={20} 
+            color="#8a6cf1" 
+          />
+        </TouchableOpacity>
+        
+        {isExpanded && (
+          <Animated.View style={styles.announcementsList}>
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#8a6cf1" />
+                <Text style={styles.loadingText}>Duyurular yükleniyor...</Text>
+              </View>
+            ) : error ? (
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={20} color="#ff6b6b" />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : announcements.length > 0 ? (
+              announcements.map((announcement) => (
+                <TouchableOpacity 
+                  key={announcement.id} 
+                  style={styles.announcementItem}
+                  onPress={() => Linking.openURL(announcement.url)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.announcementItemTitle}>{announcement.title}</Text>
+                  <Text style={styles.announcementItemDate}>
+                    {formatDate(announcement.startDate)}
+                  </Text>
+                  <Text style={styles.announcementItemMessage}>
+                    {announcement.description}
+                  </Text>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.noAnnouncementsContainer}>
+                <Ionicons name="information-circle" size={20} color="#8a6cf1" />
+                <Text style={styles.noAnnouncementsText}>Şu an için duyuru bulunmamaktadır.</Text>
+              </View>
+            )}
+          </Animated.View>
+        )}
       </View>
       <View style={styles.cardsContainer}>
         {/* Araç Sorgulama Card */}
@@ -189,6 +321,116 @@ const styles = StyleSheet.create({
     color: '#ccc',
     marginBottom: 18,
     textAlign: 'center',
+  },
+  announcementCard: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(138, 108, 241, 0.1)',
+  },
+  announcementHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2a2a40',
+    backgroundColor: '#1a1a2e',
+    borderRadius: 12,
+    margin: 16,
+    marginBottom: 0,
+  },
+  announcementTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#fff',
+    marginLeft: 8,
+  },
+  announcementCount: {
+    color: '#8a6cf1',
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+    marginLeft: 8,
+  },
+  announcementsList: {
+    padding: 16,
+    backgroundColor: '#1a1a2e',
+    marginHorizontal: 16,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    overflow: 'hidden',
+  },
+  announcementItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  announcementItemTitle: {
+    color: '#fff',
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  announcementItemDate: {
+    color: '#8a8a8f',
+    fontSize: 12,
+    marginBottom: 6,
+    fontFamily: 'Inter_400Regular',
+  },
+  announcementItemMessage: {
+    fontSize: 14,
+    color: '#c9c9d6',
+    marginTop: 8,
+    fontFamily: 'Inter_400Regular',
+    lineHeight: 20,
+  },
+  seeAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  seeAllButtonText: {
+    color: '#8a6cf1',
+    fontFamily: 'Inter_600SemiBold',
+    marginRight: 4,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    color: '#8a8a8f',
+    marginLeft: 8,
+    fontFamily: 'Inter_400Regular',
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  errorText: {
+    color: '#ff6b6b',
+    marginLeft: 8,
+    fontFamily: 'Inter_400Regular',
+  },
+  noAnnouncementsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  noAnnouncementsText: {
+    color: '#8a8a8f',
+    marginLeft: 8,
+    fontFamily: 'Inter_400Regular',
   },
   button: {
     backgroundColor: '#6a4cff',

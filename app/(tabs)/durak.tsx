@@ -3,7 +3,7 @@ import { FontAwesome5, Ionicons } from '@expo/vector-icons'; // Import Ionicons 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
 import React, { useEffect, useRef, useState } from 'react'; // Added useEffect
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface Suggestion {
   DURAK_DURAK_KODU: number;
@@ -124,7 +124,10 @@ export default function DurakScreen() {
   const [selectedStop, setSelectedStop] = useState<Suggestion | null>(null);
   const [arrivals, setArrivals] = useState<Arrival[]>([]);
   const [loading, setLoading] = useState(false);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [announcements, setAnnouncements] = useState<Array<{HAT: string, BILGI: string}>>([]);
+  const [modalVisible, setModalVisible] = useState(false);
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -133,7 +136,7 @@ export default function DurakScreen() {
   });
   const inputRef = useRef<TextInput>(null);
 
-  const API_BASE = 'https://iett.deno.dev';
+  const API_BASE = 'https://iett.rednexie.workers.dev';
 
   // Debounce and cancel previous fetches for suggestions
   const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null); // Changed React.useRef to useRef
@@ -225,6 +228,35 @@ export default function DurakScreen() {
     }
   }
 
+  async function handleAnnouncementsPress() {
+    if (!selectedStop) return;
+    setAnnouncementsLoading(true);
+    setModalVisible(true);
+    try {
+      const response = await fetch(`${API_BASE}/stop-announcements`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          stopId: selectedStop.DURAK_DURAK_KODU
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Duyurular alınamadı');
+      }
+      
+      const data = await response.json();
+      setAnnouncements(data);
+    } catch (error) {
+      console.error('Error fetching announcements:', error);
+      setError('Duyurular yüklenirken bir hata oluştu');
+    } finally {
+      setAnnouncementsLoading(false);
+    }
+  };
+
   // Effect for cleanup on unmount
   useEffect(() => {
     return () => {
@@ -300,10 +332,16 @@ export default function DurakScreen() {
         </View>
 
         {selectedStop && (
-          <TouchableOpacity style={styles.refreshBtn} onPress={handleRefresh}>
-            <FontAwesome5 name="sync-alt" size={18} color="#fff" />
-            <Text style={styles.refreshBtnText}>Yenile</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity style={[styles.refreshBtn, { marginRight: 8 }]} onPress={handleRefresh}>
+              <FontAwesome5 name="sync-alt" size={18} color="#fff" />
+              <Text style={styles.refreshBtnText}>Yenile</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.refreshBtn} onPress={handleAnnouncementsPress}>
+              <FontAwesome5 name="bell" size={18} color="#fff" />
+              <Text style={styles.refreshBtnText}>Duyurular</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -313,6 +351,45 @@ export default function DurakScreen() {
         {!loading && arrivals.length === 0 && selectedStop && !error ? (
           <Text style={styles.noDataText}>Varacak otobüs bulunamadı.</Text>
         ) : null}
+
+        <Modal
+          visible={modalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalBackground}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Durak Duyuruları</Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <Text style={styles.modalClose}>×</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.announcementList} contentContainerStyle={{ flexGrow: 1 }}>
+                {announcementsLoading ? (
+                  <ActivityIndicator size="large" color="#8a6cf1" style={styles.loader} />
+                ) : announcements.length > 0 ? (
+                  <>
+                    {announcements.map((announcement, index) => (
+                      <View key={index} style={styles.announcementItem}>
+                        <Text style={styles.announcementLine}>
+                          {announcement.HAT} Hattı
+                        </Text>
+                        <Text style={styles.announcementText}>
+                          {announcement.BILGI}
+                        </Text>
+                      </View>
+                    ))}
+                  </>
+                ) : (
+                  <Text style={styles.noDataText}>Bu durak için duyuru bulunmamaktadır.</Text>
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
 
         {!loading && arrivals.map((arrival, idx) => <ArrivalCard key={idx} arrival={arrival} />)}
       </ScrollView>
@@ -426,6 +503,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
   },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    width: '100%',
+    marginVertical: 16,
+  },
   refreshBtnText: {
     color: '#fff',
     fontFamily: 'Inter_600SemiBold', // Match HatScreen buttonText
@@ -439,5 +522,63 @@ const styles = StyleSheet.create({
   carInfo: { color: '#e0e0e0', fontFamily: 'Inter_400Regular', marginBottom: 8 },
   locationRow: { marginTop: 10, fontFamily: 'Inter_400Regular', fontSize: 12, color: '#e0e0e0', }, // Match HatScreen's general text color
   tamkonumLink: { color: '#6a4cff', textDecorationLine: 'underline', }, // Match HatScreen's button color for links
-  errorText: { color: '#ef4444', fontSize: 14, marginTop: 12, textAlign: 'center', }, // Match HatScreen error color
+  errorText: { color: '#ef4444', fontSize: 14, marginTop: 12, textAlign: 'center' }, // Match HatScreen error color
+  // Modal styles
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: 16,
+    width: '100%',
+    maxHeight: '80%',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(138, 108, 241, 0.2)',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(138, 108, 241, 0.1)',
+  },
+  modalTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  modalClose: {
+    color: '#8a6cf1',
+    fontSize: 28,
+    lineHeight: 28,
+    paddingHorizontal: 10,
+  },
+  announcementList: {
+    padding: 16,
+  },
+  announcementItem: {
+    backgroundColor: 'rgba(13, 13, 26, 0.5)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#8a4cff',
+  },
+  announcementLine: {
+    color: '#8a4cff',
+    fontFamily: 'Inter_600SemiBold',
+    marginBottom: 8,
+    fontSize: 16,
+  },
+  announcementText: {
+    color: '#e0e0e0',
+    fontFamily: 'Inter_400Regular',
+    lineHeight: 20,
+  },
 });

@@ -18,8 +18,11 @@
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
     "expo": "~53.0.4",
+    "expo-asset": "~11.1.5",
     "expo-blur": "~14.1.4",
     "expo-constants": "~17.1.4",
+    "expo-device": "^7.1.4",
+    "expo-file-system": "~18.1.10",
     "expo-font": "~13.3.0",
     "expo-haptics": "~14.1.4",
     "expo-image": "~2.1.6",
@@ -35,12 +38,11 @@
     "react-dom": "19.0.0",
     "react-native": "0.79.1",
     "react-native-gesture-handler": "~2.24.0",
-    "react-native-maps": "1.20.1",
+    "react-native-maps": "^1.24.3",
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.3.0",
     "react-native-screens": "~4.10.0",
-    "react-native-web": "~0.20.0",
-    "react-native-webview": "13.13.5"
+    "react-native-web": "~0.20.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

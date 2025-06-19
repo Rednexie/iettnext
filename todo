@@ -1,3 +1,5 @@
+
+
 harita.tsx 
 - add a link to the website, where this feature is working
 - manually implement a map view, just like how it is done in the website
@@ -7,5 +9,8 @@ hat.tsx
 - add direction to the departure times section
 - fix modal scrollability
 
-durak.tsx
-- fix depar
+ai.tsx 
+- more unique conversation ids, and store ips in conversations to balance load
+
+
+

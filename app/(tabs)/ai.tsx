@@ -1,5 +1,7 @@
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
-import React, { useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Device from 'expo-device';
+import React, { useEffect, useRef, useState } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -13,7 +15,33 @@ export default function AiScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+
+  // Generate and store a unique device identifier
+  useEffect(() => {
+    const generateDeviceId = async () => {
+      try {
+        let id = await AsyncStorage.getItem('deviceId');
+        
+        if (!id) {
+          // Get device information
+            
+          // Create a unique string from device info
+          // Simple base64 encoding
+          id = btoa(unescape(encodeURIComponent(Device.osBuildFingerprint || Math.random().toString(36).substring(2, 25))));
+          // Store the ID
+          await AsyncStorage.setItem('deviceId', id);
+        }
+        
+        setDeviceId(id);
+      } catch (error) {
+        console.error('Failed to generate device ID:', error);
+      }
+    };
+
+    generateDeviceId();
+  }, []);
 
   const sendMessage = async () => {
     const text = input.trim();
@@ -25,11 +53,13 @@ export default function AiScreen() {
     try {
       const res = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages }),
+        headers: { 
+          'Content-Type': 'application/json',
+          'device-id': deviceId || '' 
+        },
+        body: JSON.stringify({ messages }),
       });
       const data: any = await res.json();
-      console.log('AI Response:', JSON.stringify(data, null, 2));
       const assistantMessage: Message = { sender: 'assistant', text: data.content, tool: data.tool, data: data.data };
       setMessages([...newMessages, assistantMessage]);
       scrollRef.current?.scrollToEnd({ animated: true });

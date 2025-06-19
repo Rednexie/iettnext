@@ -28,7 +28,7 @@ interface OldLine {
   freq?: string;
 }
 
-const API_URL = 'https://iett.deno.dev/api/oldlines';
+const API_URL = 'https://iett.rednexie.workers.dev/api/oldlines';
 const CACHE_KEY = 'ol';
 const CACHE_TIMESTAMP_KEY = 'olt';
 const CACHE_VALIDITY_MS = 24 * 60 * 60 * 1000; // 24 hours
