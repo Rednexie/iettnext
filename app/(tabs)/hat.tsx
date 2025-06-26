@@ -2,6 +2,7 @@ import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, us
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Dimensions, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Utility function to decode HTML entities and fix encoding issues
 const decodeHTMLEntities = (text: string): string => {
@@ -65,6 +66,8 @@ export default function HatScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [direction, setDirection] = useState(0);
   const [activeTab, setActiveTab] = useState<'times'|'stations'>('times');
+  const [favoriteLines, setFavoriteLines] = useState<{ code: string; name: string }[]>([]);
+  const isFavoriteLine = selected ? favoriteLines.some(f => f.code === selected.line) : false;
 
   // Dynamic font size for line name
   const lineNameText = selected ? decodeHTMLEntities(selected.name) : '';
@@ -129,6 +132,11 @@ export default function HatScreen() {
         .then(r => r.json())
         .then(data => {
           // filter suggestions before setting
+          // if there are no lines 
+          if (!data || !data.filter || data.length === 0) {
+            setSuggestions([]);
+            return;
+          }
           const filtered = data.filter((item: LineItem) => !item?.line?.trim().startsWith('<'));
           setSuggestions(filtered);
           setSelectedIndex(-1);
@@ -226,6 +234,31 @@ export default function HatScreen() {
     }
   };
 
+  useEffect(() => {
+    (async () => {
+      const raw = await AsyncStorage.getItem('favoriteLines');
+      if (raw) setFavoriteLines(JSON.parse(raw));
+    })();
+  }, []);
+
+  async function toggleFavoriteLine() {
+    if (!selected) return;
+    const updated = favoriteLines.filter(f => f.code !== selected.line);
+    const isAdding = updated.length === favoriteLines.length;
+    if (isAdding) {
+      updated.unshift({ code: selected.line, name: selected.name });
+    }
+    setFavoriteLines(updated);
+    await AsyncStorage.setItem('favoriteLines', JSON.stringify(updated));
+  }
+
+  // Allow unstar from favorites list
+  async function removeFavoriteLine(code: string) {
+    const updated = favoriteLines.filter(f => f.code !== code);
+    setFavoriteLines(updated);
+    await AsyncStorage.setItem('favoriteLines', JSON.stringify(updated));
+  }
+
   if (!fontsLoaded) return null;
 
   return (
@@ -274,6 +307,30 @@ export default function HatScreen() {
           </View>
         )}
       </View>
+      {!selected && query.trim() === '' && favoriteLines.length > 0 && (
+        <ScrollView
+          horizontal
+          style={[styles.suggestionsScrollView, { marginVertical: 8 }]}
+          showsHorizontalScrollIndicator={false}
+        >
+          {favoriteLines.map(f => (
+            <View key={f.code} style={[styles.suggestionItem, { marginHorizontal: 4 }]}>  
+              <TouchableOpacity
+                onPress={() => removeFavoriteLine(f.code)}
+                style={{ padding: 4, marginRight: 8 }}
+              >
+                <Ionicons name="star" size={16} color="#6a4cff" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => selectLine({ line: f.code, name: f.name })}
+                style={{ flex: 1 }}
+              >
+                <Text style={styles.lineCode}>{f.code}</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </ScrollView>
+      )}
       {selected && (
         <View style={[styles.resultContainer, { paddingTop: 16 }]}>
           {loading ? (
@@ -313,6 +370,9 @@ export default function HatScreen() {
                 <View style={styles.contentCard}>
                   <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>Sefer Saatleri</Text>
+                    <TouchableOpacity style={styles.favoriteBtn} onPress={toggleFavoriteLine}>
+                      <Ionicons name={isFavoriteLine ? 'star' : 'star-outline'} size={24} color="#8a6cf1" />
+                    </TouchableOpacity>
                     <Switch
                       trackColor={{ false: '#0d0d1a', true: '#0d0d1a' }}
                       thumbColor={direction ? '#8a6cf1' : '#6a4cff'}
@@ -346,6 +406,9 @@ export default function HatScreen() {
                 <View style={styles.contentCard}>
                   <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>Duraklar</Text>
+                    <TouchableOpacity style={styles.favoriteBtn} onPress={toggleFavoriteLine}>
+                      <Ionicons name={isFavoriteLine ? 'star' : 'star-outline'} size={24} color="#8a6cf1" />
+                    </TouchableOpacity>
                     <Switch
                       trackColor={{ false: '#0d0d1a', true: '#0d0d1a' }}
                       thumbColor={direction ? '#8a6cf1' : '#6a4cff'}
@@ -775,4 +838,9 @@ const styles = StyleSheet.create({
   directionSwitch: {
     marginHorizontal: 8,
   },
+  suggestionsScrollView: { paddingHorizontal: 16 },
+  favoriteItem: { backgroundColor: 'rgba(138, 108, 241, 0.1)', borderRadius: 16, paddingVertical: 6, paddingHorizontal: 12, marginRight: 8, flexDirection: 'row', alignItems: 'center' },
+  favoriteName: { color: '#8a6cf1', fontSize: 14 },
+  favoriteIcon: { marginRight: 4 },
+  favoriteBtn: { marginHorizontal: 8, justifyContent: 'center', alignItems: 'center' },
 });

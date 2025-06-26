@@ -8,7 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 
 
-const API_BASE = 'https://iett.rednexie.workers.dev';
+// const API_BASE = 'https://iett.rednexie.workers.dev';
+const API_BASE = 'http://192.168.1.11:3000';
 
 interface Announcement {
   id: string | number;
@@ -57,7 +58,7 @@ export default function HomeScreen() {
         const response = await fetch(`${API_BASE}/main-announcements`);
 
         const data = await response.json();
-        // console.log(data)
+        //console.log(data)
         setAnnouncements(data); // Store all announcements
       } catch (err) {
         console.error('Error fetching announcements:', err);
@@ -70,17 +71,7 @@ export default function HomeScreen() {
     fetchAnnouncements();
   }, []);
 
-  // Format date to Turkish locale
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('tr-TR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+
 
   // Daily update check
   useEffect(() => {
@@ -94,18 +85,18 @@ export default function HomeScreen() {
         }
       }
       try {
-        const res = await fetch('https://raw.githubusercontent.com/Rednexie/rednexie.github.io/main/iettnext.txt');
+        const res = await fetch('https://raw.githubusercontent.com/Rednexie/rednexie.github.io/main/iettnext.json');
         if (!res.ok) return;
-        const remoteVersion = (await res.text()).trim();
+        const remoteData = await res.json();
+        const remoteVersion = remoteData.version?.trim();
+        const remoteMessage = remoteData.message;
         const semverRe = /^\d+\.\d+\.\d+$/;
-        if (!semverRe.test(remoteVersion)) {
-          return;
-        }
+        if (!remoteVersion || !semverRe.test(remoteVersion)) return;
         const currentVersion = localVersionData.version;
         if (remoteVersion !== currentVersion) {
           Alert.alert(
             'Güncelleme Var',
-            localVersionData.message || `Yeni sürüm ${remoteVersion} mevcut.`,
+            remoteMessage || `Yeni sürüm ${remoteVersion} mevcut.`,
             [
               { text: 'Daha Sonra', style: 'cancel' },
               { text: 'Güncelle', onPress: () => Linking.openURL(localVersionData.url) }
@@ -181,7 +172,7 @@ export default function HomeScreen() {
                 >
                   <Text style={styles.announcementItemTitle}>{announcement.title}</Text>
                   <Text style={styles.announcementItemDate}>
-                    {formatDate(announcement.startDate)}
+                    {(announcement.startDate)}
                   </Text>
                   <Text style={styles.announcementItemMessage}>
                     {announcement.description}

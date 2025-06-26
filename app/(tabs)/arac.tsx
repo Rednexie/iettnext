@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-const API_BASE = 'https://iett.deno.dev';
+const API_BASE = 'https://iett.rednexie.workers.dev';
 
 const Arac = () => {
   const [fontsLoaded] = useFonts({

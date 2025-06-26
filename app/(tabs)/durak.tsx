@@ -128,6 +128,8 @@ export default function DurakScreen() {
   const [error, setError] = useState('');
   const [announcements, setAnnouncements] = useState<Array<{HAT: string, BILGI: string}>>([]);
   const [modalVisible, setModalVisible] = useState(false);
+  const [favoriteStops, setFavoriteStops] = useState<{ stopId: number; name: string }[]>([]);
+  const isFavoriteStop = selectedStop ? favoriteStops.some(f => f.stopId === selectedStop.DURAK_DURAK_KODU) : false;
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -141,6 +143,30 @@ export default function DurakScreen() {
   // Debounce and cancel previous fetches for suggestions
   const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null); // Changed React.useRef to useRef
   const abortController = useRef<AbortController | null>(null); // Changed React.useRef to useRef
+
+  useEffect(() => {
+    (async () => {
+      const raw = await AsyncStorage.getItem('favoriteStops');
+      if (raw) setFavoriteStops(JSON.parse(raw));
+    })();
+  }, []);
+
+  async function toggleFavoriteStop() {
+    if (!selectedStop) return;
+    const updated = favoriteStops.filter(f => f.stopId !== selectedStop.DURAK_DURAK_KODU);
+    const isAdding = updated.length === favoriteStops.length;
+    if (isAdding) {
+      updated.unshift({ stopId: selectedStop.DURAK_DURAK_KODU, name: selectedStop.DURAK_ADI });
+    }
+    setFavoriteStops(updated);
+    await AsyncStorage.setItem('favoriteStops', JSON.stringify(updated));
+  }
+
+  async function removeFavoriteStop(stopId: number) {
+    const updated = favoriteStops.filter(f => f.stopId !== stopId);
+    setFavoriteStops(updated);
+    await AsyncStorage.setItem('favoriteStops', JSON.stringify(updated));
+  }
 
   async function fetchSuggestions(text: string) {
     setQuery(text);
@@ -331,6 +357,21 @@ export default function DurakScreen() {
           )}
         </View>
 
+        {!selectedStop && query.trim() === '' && favoriteStops.length > 0 && (
+          <ScrollView horizontal style={[styles.suggestionsScrollView, { marginVertical: 8 }]} showsHorizontalScrollIndicator={false}>
+            {favoriteStops.map(f => (
+              <View key={f.stopId} style={[styles.suggestionItem, { marginHorizontal: 4 }]}>
+                <TouchableOpacity onPress={() => removeFavoriteStop(f.stopId)} style={{ padding: 4, marginRight: 8 }}>
+                  <Ionicons name="star" size={16} color="#6a4cff" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => selectSuggestion({ DURAK_DURAK_KODU: f.stopId, DURAK_ADI: f.name, DURAK_YON_BILGISI: '' })} style={{ flex: 1 }}>
+                  <Text style={styles.lineName}>{f.name}</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+
         {selectedStop && (
           <View style={styles.buttonContainer}>
             <TouchableOpacity style={[styles.refreshBtn, { marginRight: 8 }]} onPress={handleRefresh}>
@@ -340,6 +381,9 @@ export default function DurakScreen() {
             <TouchableOpacity style={styles.refreshBtn} onPress={handleAnnouncementsPress}>
               <FontAwesome5 name="bell" size={18} color="#fff" />
               <Text style={styles.refreshBtnText}>Duyurular</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.refreshBtn, styles.favoriteBtn]} onPress={toggleFavoriteStop}>
+              <Ionicons name={isFavoriteStop ? 'star' : 'star-outline'} size={20} color="#fff" />
             </TouchableOpacity>
           </View>
         )}
@@ -581,4 +625,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     lineHeight: 20,
   },
+  favoritesContainer: { marginVertical: 8 },
+  favoritesTitle: { fontSize: 16, fontWeight: '600', color: '#8a6cf1', marginLeft: 16, marginBottom: 4 },
+  favoritesScrollView: { paddingHorizontal: 16 },
+  favoriteItem: { backgroundColor: 'rgba(138, 108, 241, 0.1)', borderRadius: 16, paddingVertical: 6, paddingHorizontal: 12, marginRight: 8, flexDirection: 'row', alignItems: 'center' },
+  favoriteName: { color: '#8a6cf1', fontSize: 14 },
+  favoriteIcon: { marginRight: 4 },
+  favoriteBtn: { marginLeft: 8, justifyContent: 'center', alignItems: 'center' },
 });

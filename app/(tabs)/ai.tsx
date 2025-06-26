@@ -5,10 +5,19 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-const API_BASE = 'https://iett.deno.dev';
+const API_BASE = 'https://iett.rednexie.workers.dev';
 
 // Define chat message type
 type Message = { sender: 'user' | 'assistant'; text: string; tool?: string; data?: any };
+
+// Add UUID generator
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
 
 export default function AiScreen() {
   const [fontsLoaded] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold });
@@ -16,6 +25,7 @@ export default function AiScreen() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string>(() => generateUUID());
   const scrollRef = useRef<ScrollView>(null);
 
   // Generate and store a unique device identifier
@@ -48,22 +58,36 @@ export default function AiScreen() {
     if (!text) return;
     setInput('');
     const newMessages: Message[] = [...messages, { sender: 'user', text }];
+    console.log('Conversation ID:', conversationId);
+    console.log('Sending message:', newMessages);
     setMessages(newMessages);
     setLoading(true);
     try {
+      console.log('Device ID:', deviceId);
       const res = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'device-id': deviceId || '' 
         },
-        body: JSON.stringify({ messages }),
+        body: JSON.stringify({ conversationId, messages: newMessages }),
       });
+
+      console.log('Request sent to:', `${API_BASE}/api/chat`);
+      console.log('Request headers:', {
+        'Content-Type': 'application/json',
+        'device-id': deviceId || ''
+      });
+      console.log('Request body:', { conversationId, messages: newMessages });
+
       const data: any = await res.json();
+      console.log('Response received:', data);
+
       const assistantMessage: Message = { sender: 'assistant', text: data.content, tool: data.tool, data: data.data };
       setMessages([...newMessages, assistantMessage]);
       scrollRef.current?.scrollToEnd({ animated: true });
     } catch (e) {
+      console.error(e);
       const assistantMessage: Message = { sender: 'assistant', text: 'Üzgünüm, bir hata oluştu.' };
       setMessages([...newMessages, assistantMessage]);
     } finally {
@@ -71,9 +95,10 @@ export default function AiScreen() {
     }
   };
 
-  // Clear chat history
+  // Clear chat history and reset conversation ID
   const clearSession = () => {
     setMessages([]);
+    setConversationId(generateUUID());
   };
 
   // Helper to decode HTML entities for Turkish accents
