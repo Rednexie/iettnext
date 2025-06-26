@@ -1,15 +1,15 @@
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View, Animated, LayoutAnimation } from 'react-native';
+import { ActivityIndicator, Alert, Animated, LayoutAnimation, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import localVersionData from '../../assets/version.json';
-import { Ionicons } from '@expo/vector-icons';
 
 
 
-// const API_BASE = 'https://iett.rednexie.workers.dev';
-const API_BASE = 'http://192.168.1.11:3000';
+const API_BASE = 'https://iett.rednexie.workers.dev';
+
 
 interface Announcement {
   id: string | number;
