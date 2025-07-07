@@ -128,7 +128,7 @@ export default function DurakScreen() {
   const [error, setError] = useState('');
   const [announcements, setAnnouncements] = useState<Array<{HAT: string, BILGI: string}>>([]);
   const [modalVisible, setModalVisible] = useState(false);
-  const [favoriteStops, setFavoriteStops] = useState<{ stopId: number; name: string }[]>([]);
+  const [favoriteStops, setFavoriteStops] = useState<{ stopId: number; name: string; direction: string }[]>([]);
   const isFavoriteStop = selectedStop ? favoriteStops.some(f => f.stopId === selectedStop.DURAK_DURAK_KODU) : false;
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -155,8 +155,13 @@ export default function DurakScreen() {
     if (!selectedStop) return;
     const updated = favoriteStops.filter(f => f.stopId !== selectedStop.DURAK_DURAK_KODU);
     const isAdding = updated.length === favoriteStops.length;
+
     if (isAdding) {
-      updated.unshift({ stopId: selectedStop.DURAK_DURAK_KODU, name: selectedStop.DURAK_ADI });
+      updated.push({ 
+        stopId: selectedStop.DURAK_DURAK_KODU, 
+        name: selectedStop.DURAK_ADI,
+        direction: selectedStop.DURAK_YON_BILGISI || ''
+      });
     }
     setFavoriteStops(updated);
     await AsyncStorage.setItem('favoriteStops', JSON.stringify(updated));
@@ -358,18 +363,36 @@ export default function DurakScreen() {
         </View>
 
         {!selectedStop && query.trim() === '' && favoriteStops.length > 0 && (
-          <ScrollView horizontal style={[styles.suggestionsScrollView, { marginVertical: 8 }]} showsHorizontalScrollIndicator={false}>
-            {favoriteStops.map(f => (
-              <View key={f.stopId} style={[styles.suggestionItem, { marginHorizontal: 4 }]}>
-                <TouchableOpacity onPress={() => removeFavoriteStop(f.stopId)} style={{ padding: 4, marginRight: 8 }}>
-                  <Ionicons name="star" size={16} color="#6a4cff" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => selectSuggestion({ DURAK_DURAK_KODU: f.stopId, DURAK_ADI: f.name, DURAK_YON_BILGISI: '' })} style={{ flex: 1 }}>
-                  <Text style={styles.lineName}>{f.name}</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </ScrollView>
+          <View style={styles.favoritesContainer}>
+            <ScrollView 
+              style={styles.favoritesScroll}
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
+            >
+              {favoriteStops.map(f => (
+                <View key={f.stopId} style={styles.favoriteItem}>
+                  <TouchableOpacity 
+                    onPress={() => removeFavoriteStop(f.stopId)} 
+                    style={styles.favoriteRemove}
+                  >
+                    <Ionicons name="star" size={16} color="#6a4cff" />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={() => selectSuggestion({ 
+                      DURAK_DURAK_KODU: f.stopId, 
+                      DURAK_ADI: f.name, 
+                      DURAK_YON_BILGISI: f.direction 
+                    })} 
+                    style={{ flex: 1 }}
+                  >
+                    <Text style={styles.favoriteName}>
+                      {f.name}{f.direction ? ` (${f.direction})` : ''}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
         )}
 
         {selectedStop && (
@@ -495,12 +518,33 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(138, 108, 241, 0.08)',
   },
+
+  favoriteItem: { 
+    backgroundColor: 'transparent',
+    borderRadius: 3,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginRight: 10,
+    marginBottom: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#8a6cf1',
+  },
+  favoriteName: { 
+    color: '#e0e0e0',
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+    marginLeft: 6,
+  },
+  favoriteIcon: { marginRight: 4 },
+  favoriteBtn: { marginLeft: 8, justifyContent: 'center', alignItems: 'center' },
   selectedItem: { backgroundColor: 'rgba(138, 108, 241, 0.34)' },
   lineCode: {
     backgroundColor: 'rgba(138, 108, 241, 0.2)',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 4,
+    borderRadius: 0,
     color: '#8a6cf1',
     fontFamily: 'Inter_500Medium',
     marginRight: 12,
@@ -512,7 +556,7 @@ const styles = StyleSheet.create({
   noDataText: { color: '#a0a0a0', fontFamily: 'Inter_400Regular', textAlign: 'center', marginVertical: 16 },
   resultContainer: {
     backgroundColor: '#1a1a2e',
-    borderRadius: 16,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: 'rgba(138, 108, 241, 0.1)',
     padding: 16,
@@ -534,7 +578,7 @@ const styles = StyleSheet.create({
   resultHeaderText: { fontSize: 18, fontFamily: 'Inter_600SemiBold', color: '#e0e0e0' },
   refreshBtn: {
     backgroundColor: '#6a4cff', // Match HatScreen button
-    borderRadius: 8, // Match HatScreen button
+    borderRadius: 0, // Match HatScreen button
     paddingVertical: 12, // Match HatScreen button
     paddingHorizontal: 16, // Match HatScreen button
     alignItems: 'center',
@@ -625,11 +669,49 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     lineHeight: 20,
   },
-  favoritesContainer: { marginVertical: 8 },
-  favoritesTitle: { fontSize: 16, fontWeight: '600', color: '#8a6cf1', marginLeft: 16, marginBottom: 4 },
-  favoritesScrollView: { paddingHorizontal: 16 },
-  favoriteItem: { backgroundColor: 'rgba(138, 108, 241, 0.1)', borderRadius: 16, paddingVertical: 6, paddingHorizontal: 12, marginRight: 8, flexDirection: 'row', alignItems: 'center' },
-  favoriteName: { color: '#8a6cf1', fontSize: 14 },
-  favoriteIcon: { marginRight: 4 },
-  favoriteBtn: { marginLeft: 8, justifyContent: 'center', alignItems: 'center' },
+  favoritesContainer: { 
+    marginVertical: 12,
+    paddingHorizontal: 16,
+  },
+  favoritesTitle: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: '#8a6cf1', 
+    marginLeft: 8, 
+    marginBottom: 8 
+  },
+  favoritesScrollView: { 
+    paddingVertical: 4,
+  },
+  favoriteItem: { 
+    backgroundColor: 'transparent',
+    borderRadius: 3,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginRight: 10,
+    marginBottom: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#8a6cf1',
+  },
+  favoriteName: { 
+    color: '#e0e0e0',
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+    marginLeft: 6,
+  },
+  favoriteIcon: { 
+    marginRight: 4 
+  },
+  favoriteBtn: { 
+    marginLeft: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 8,
+  },
+  favoriteRemove: {
+    marginLeft: 8,
+    padding: 4,
+  },
 });

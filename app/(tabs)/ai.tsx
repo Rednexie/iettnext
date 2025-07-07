@@ -32,21 +32,42 @@ export default function AiScreen() {
   useEffect(() => {
     const generateDeviceId = async () => {
       try {
+        // First try to get existing device ID
         let id = await AsyncStorage.getItem('deviceId');
         
+        // If no ID exists, generate a new one
         if (!id) {
-          // Get device information
-            
-          // Create a unique string from device info
-          // Simple base64 encoding
-          id = btoa(unescape(encodeURIComponent(Device.osBuildFingerprint || Math.random().toString(36).substring(2, 25))));
-          // Store the ID
-          await AsyncStorage.setItem('deviceId', id);
+          id = await createAndStoreDeviceId();
         }
         
         setDeviceId(id);
       } catch (error) {
-        console.error('Failed to generate device ID:', error);
+        // If any error occurs, generate a new ID and continue
+        const newId = await createAndStoreDeviceId();
+        setDeviceId(newId);
+      }
+    };
+
+    const createAndStoreDeviceId = async (): Promise<string> => {
+      try {
+        // Create a unique string using device info if available, otherwise use random string
+        const deviceInfo = Device.osBuildFingerprint || Device.modelName || Device.deviceName || '';
+        const randomString = Math.random().toString(36).substring(2, 15) + 
+                           Math.random().toString(36).substring(2, 15);
+        
+        const id = btoa(unescape(encodeURIComponent(
+          deviceInfo ? `${deviceInfo}-${randomString}` : randomString
+        )));
+        
+        // Store the ID for future use
+        await AsyncStorage.setItem('deviceId', id);
+        return id;
+      } catch (error) {
+        // If storage fails, return a random ID (won't persist but will work for current session)
+        // persist this id instead
+        const id = generateUUID();
+        await AsyncStorage.setItem('deviceId', id);
+        return id;
       }
     };
 
@@ -58,30 +79,23 @@ export default function AiScreen() {
     if (!text) return;
     setInput('');
     const newMessages: Message[] = [...messages, { sender: 'user', text }];
-    console.log('Conversation ID:', conversationId);
-    console.log('Sending message:', newMessages);
-    setMessages(newMessages);
-    setLoading(true);
     try {
-      console.log('Device ID:', deviceId);
-      const res = await fetch(`${API_BASE}/api/chat`, {
+      if (!deviceId) return;
+
+      // Add the message to the UI immediately
+      setMessages([...newMessages, { sender: 'assistant', text: '...' }]);
+      setLoading(true);
+      
+      const response = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'device-id': deviceId || '' 
+          'device-id': deviceId,
         },
         body: JSON.stringify({ conversationId, messages: newMessages }),
       });
-
-      console.log('Request sent to:', `${API_BASE}/api/chat`);
-      console.log('Request headers:', {
-        'Content-Type': 'application/json',
-        'device-id': deviceId || ''
-      });
-      console.log('Request body:', { conversationId, messages: newMessages });
-
-      const data: any = await res.json();
-      console.log('Response received:', data);
+      
+      const data = await response.json();
 
       const assistantMessage: Message = { sender: 'assistant', text: data.content, tool: data.tool, data: data.data };
       setMessages([...newMessages, assistantMessage]);
@@ -167,17 +181,27 @@ export default function AiScreen() {
       }
       case 'get_arrivals': {
         return (
-          <View style={styles.stopListContainer}>
+          <View style={styles.arrivalListContainer}>
             <ScrollView nestedScrollEnabled>
               {m.data.map((station: any, idx: number) => (
-                <React.Fragment key={idx}>
-                  <Text style={styles.arrivalStation}>{station.station}</Text>
-                  {station.arrivals.map((a: any, j: number) => (
-                    <View key={j} style={styles.stopItem}>
-                      <Text style={styles.stopText}>{`${a.hatkodu} @ ${a.saat} (${a.dakika} dk)`}</Text>
-                    </View>
-                  ))}
-                </React.Fragment>
+                <View key={idx} style={{ marginBottom: 16 }}>
+                  <Text style={styles.arrivalStation}>{decodeEntities(station.station)}</Text>
+                  <View style={{ gap: 8, marginTop: 4 }}>
+                    {station.arrivals.map((a: any, j: number) => (
+                      <View key={j} style={styles.arrivalItem}>
+                        <Text style={styles.arrivalText}>
+                          <Text style={{ fontWeight: '600' }}>{a.hatkodu}</Text> {a.saat} 
+                          <Text style={{ color: '#8a6cf1' }}> ({a.dakika} dk) </Text>
+                          {a.kapino && (
+                            <Text style={{ fontSize: 12, color: '#a0a0a0', marginLeft: 4 }}>
+                              {a.kapino}
+                            </Text>
+                          )}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
               ))}
             </ScrollView>
           </View>
@@ -232,7 +256,11 @@ export default function AiScreen() {
   if (!fontsLoaded) return null;
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={80}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+    >
       <TouchableOpacity style={styles.clearSessionButton} onPress={clearSession}>
         <Text style={styles.clearSessionText}>Oturumu Temizle</Text>
       </TouchableOpacity>
@@ -278,8 +306,16 @@ export default function AiScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0d0d1a' },
-  messagesContainer: { flex: 1, padding: 16 },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#0d0d1a',
+    justifyContent: 'space-between',
+  },
+  messagesContainer: { 
+    flex: 1,
+    padding: 16,
+    paddingBottom: Platform.OS === 'android' ? 10 : 0,
+  },
   messagesContent: { paddingBottom: 16, flexGrow: 1, justifyContent: 'flex-end' },
   intro: { color: '#ccc', fontFamily: 'Inter_400Regular', textAlign: 'center', marginVertical: 20 },
   messageBubble: { maxWidth: '80%', padding: 12, borderRadius: 12, marginVertical: 4 },
@@ -289,15 +325,32 @@ const styles = StyleSheet.create({
   messageText: { fontSize: 16 },
   userText: { color: '#fff', fontFamily: 'Inter_500Medium' },
   assistantText: { color: '#e0e0e0', fontFamily: 'Inter_400Regular' },
-  stopListContainer: { maxHeight: 200, width: '100%', marginVertical: 8 },
-  stopItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4, position: 'relative' },
-  stopDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#8a6cf1', position: 'absolute', left: 0, zIndex: 2 },
-  stopLine: { position: 'absolute', left: 4, top: 10, bottom: 0, width: 2, backgroundColor: '#8a6cf1', zIndex: 1 },
-  stopText: { marginLeft: 16, color: '#fff', fontFamily: 'Inter_500Medium', fontSize: 14, flexShrink: 1 },
-  arrivalContainer: { marginVertical: 8 },
-  arrivalCard: { backgroundColor: '#1a1a2e', borderWidth: 1, borderColor: 'rgba(138,108,241,0.1)', borderRadius: 8, padding: 12, marginVertical: 4 },
-  arrivalStation: { fontFamily: 'Inter_600SemiBold', color: '#8a6cf1', marginBottom: 6 },
-  arrivalText: { fontFamily: 'Inter_400Regular', color: '#e0e0e0', fontSize: 14, marginBottom: 2 },
+  stopListContainer: { marginTop: 8, maxHeight: 200 },
+  stopItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  stopDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#8a6cf1', marginRight: 8 },
+  stopLine: { position: 'absolute', left: 3.5, top: 8, bottom: -12, width: 1, backgroundColor: '#8a6cf1' },
+  stopText: { color: '#e0e0e0', fontSize: 14 },
+  arrivalListContainer: { marginTop: 8, maxHeight: 300 },
+  arrivalStation: { 
+    color: '#8a6cf1', 
+    fontWeight: '600', 
+    fontSize: 15,
+    marginBottom: 8,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  arrivalItem: {
+    backgroundColor: 'rgba(138, 108, 241, 0.05)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(138, 108, 241, 0.1)', 
+    padding: 12,
+  },
+  arrivalText: {
+    color: '#e0e0e0',
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: 'Inter_400Regular',
+  },
   tableContainer: { borderWidth: 1, borderColor: 'rgba(138,108,241,0.1)', borderRadius: 8, overflow: 'hidden', marginVertical: 8 },
   tableRow: { flexDirection: 'row', paddingVertical: 8, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(138,108,241,0.1)' },
   tableHeaderCell: { flex: 1, color: '#8a6cf1', fontFamily: 'Inter_500Medium', fontSize: 14 },
@@ -309,7 +362,14 @@ const styles = StyleSheet.create({
   timeRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 },
   timeLabel: { fontFamily: 'Inter_500Medium', color: '#ccc', width: 80 },
   timeValue: { flex: 1, fontFamily: 'Inter_400Regular', color: '#e0e0e0', flexWrap: 'wrap' },
-  inputContainer: { flexDirection: 'row', padding: 8, borderTopWidth: 1, borderTopColor: 'rgba(138,108,241,0.2)', backgroundColor: '#1a1a2e' },
+  inputContainer: {
+    flexDirection: 'row',
+    padding: 10,
+    backgroundColor: '#1a1a2e',
+    borderTopWidth: 1,
+    borderTopColor: '#2a2a3a',
+    paddingBottom: Platform.OS === 'android' ? 20 : 10, 
+  },
   input: { flex: 1, color: '#e0e0e0', fontFamily: 'Inter_400Regular', backgroundColor: 'rgba(13,13,26,0.6)', borderRadius: 20, paddingHorizontal: 16 },
   sendButton: { justifyContent: 'center', paddingHorizontal: 16 },
   sendButtonText: { color: '#8a6cf1', fontFamily: 'Inter_600SemiBold' },

@@ -38,9 +38,14 @@ type AnnouncementItem = {
   severity?: string;
 };
 
-type DepartureTable = {
+interface DepartureTime {
+  text: string;
+  isSpecial: boolean;
+}
+
+interface DepartureTable {
   title: string;
-  schedule: Record<'I'|'C'|'P', string[]>;
+  schedule: Record<'I' | 'C' | 'P', DepartureTime[]>;
 };
 
 // const API_BASE = 'http://192.168.1.4:3000'
@@ -168,12 +173,22 @@ export default function HatScreen() {
       const tblHtml = m[1];
       const titleMatch = tblHtml.match(/<th class="routedetailstartend"[^>]*>([\s\S]*?)<\/th>/);
       const title = titleMatch ? decodeHTMLEntities(titleMatch[1].trim()) : '';
-      const sched: Record<'I'|'C'|'P', string[]> = { I: [], C: [], P: [] };
+      const sched: Record<'I'|'C'|'P', DepartureTime[]> = { I: [], C: [], P: [] };
       const tbodyMatch = tblHtml.match(/<tbody>([\s\S]*?)<\/tbody>/);
       if (tbodyMatch) {
         const rows = tbodyMatch[1].match(/<tr>([\s\S]*?)<\/tr>/g) || [];
         rows.forEach(r => {
-          const cells = Array.from(r.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g), x => decodeHTMLEntities(x[1].trim()));
+          // Get all table cells in this row
+          const cellMatches = Array.from(r.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g));
+          const cells = cellMatches.map(match => {
+            const cellContent = match[1];
+            // Check if this is a special service (red color)
+            const isSpecial = match[0].includes('color:red');
+            // Extract just the text content
+            const timeText = decodeHTMLEntities(cellContent.replace(/<[^>]*>/g, '').trim());
+            return { text: timeText, isSpecial };
+          });
+          
           if (cells.length === 3) {
             sched.I.push(cells[0]);
             sched.C.push(cells[1]);
@@ -184,6 +199,18 @@ export default function HatScreen() {
       tables.push({ title, schedule: sched });
     }
     return tables;
+  };
+
+  // Format departure time - returns just the text
+  const formatDepartureTime = (timeData: DepartureTime | undefined): string => {
+    return timeData?.text || '';
+  };
+
+  // Helper function to extract just the time part without HTML
+  const extractTimeText = (html: string): string => {
+    if (!html) return '';
+    // Remove HTML tags and trim
+    return html.replace(/<[^>]*>/g, '').trim();
   };
 
   const selectLine = (item: LineItem) => {
@@ -392,9 +419,15 @@ export default function HatScreen() {
                       </View>
                       {timetable[direction].schedule.I.map((_, idx) => (
                         <View key={idx} style={[styles.tableRow, idx % 2 === 1 && styles.tableRowAlt]}>
-                          <Text style={[styles.tableCell, { flex: 1 }]}>{timetable[direction].schedule.I[idx]}</Text>
-                          <Text style={[styles.tableCell, { flex: 1 }]}>{timetable[direction].schedule.C[idx]}</Text>
-                          <Text style={[styles.tableCell, { flex: 1 }]}>{timetable[direction].schedule.P[idx]}</Text>
+                          <Text style={[styles.tableCell, { flex: 1 }, timetable[direction].schedule.I[idx]?.isSpecial && { color: 'red' }]}>
+                            {formatDepartureTime(timetable[direction].schedule.I[idx])}
+                          </Text>
+                          <Text style={[styles.tableCell, { flex: 1 }, timetable[direction].schedule.C[idx]?.isSpecial && { color: 'red' }]}>
+                            {formatDepartureTime(timetable[direction].schedule.C[idx])}
+                          </Text>
+                          <Text style={[styles.tableCell, { flex: 1 }, timetable[direction].schedule.P[idx]?.isSpecial && { color: 'red' }]}>
+                            {formatDepartureTime(timetable[direction].schedule.P[idx])}
+                          </Text>
                         </View>
                       ))}
                     </>

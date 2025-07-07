@@ -1,6 +1,7 @@
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, LayoutAnimation, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -58,10 +59,8 @@ export default function HomeScreen() {
         const response = await fetch(`${API_BASE}/main-announcements`);
 
         const data = await response.json();
-        //console.log(data)
         setAnnouncements(data); // Store all announcements
       } catch (err) {
-        console.error('Error fetching announcements:', err);
         setError('Duyurular yüklenemedi. Lütfen daha sonra tekrar deneyiniz.');
       } finally {
         setLoading(false);
@@ -71,28 +70,29 @@ export default function HomeScreen() {
     fetchAnnouncements();
   }, []);
 
-
-
   // Daily update check
   useEffect(() => {
     const checkUpdate = async () => {
-      const now = Date.now();
-      let last: string | null = null;
-      if (!ALWAYSUPDATE) {
-        last = await AsyncStorage.getItem('lastUpdateCheck');
+      try {
+        const now = Date.now();
+        const last = await AsyncStorage.getItem('lastUpdateCheck');
+
+        // Only check for updates once per day
         if (last && now - parseInt(last) < 24 * 60 * 60 * 1000) {
           return;
         }
-      }
-      try {
+
         const res = await fetch('https://raw.githubusercontent.com/Rednexie/rednexie.github.io/main/iettnext.json');
         if (!res.ok) return;
+
         const remoteData = await res.json();
-        const remoteVersion = remoteData.version?.trim();
-        const remoteMessage = remoteData.message;
-        const semverRe = /^\d+\.\d+\.\d+$/;
-        if (!remoteVersion || !semverRe.test(remoteVersion)) return;
-        const currentVersion = localVersionData.version;
+        const localVersionData = remoteData['com.rednexie.iettnext'];
+        if (!localVersionData) return;
+
+        const remoteVersion = localVersionData.version;
+        const remoteMessage = localVersionData.message;
+        const currentVersion = Constants.expoConfig?.version || '1.0.0';
+
         if (remoteVersion !== currentVersion) {
           Alert.alert(
             'Güncelleme Var',
@@ -104,13 +104,13 @@ export default function HomeScreen() {
             { cancelable: true }
           );
         }
+
+        await AsyncStorage.setItem('lastUpdateCheck', now.toString());
       } catch (e) {
-      } finally {
-        if (!ALWAYSUPDATE) {
-          await AsyncStorage.setItem('lastUpdateCheck', now.toString());
-        }
+        // Silently fail - we don't want to bother users with update check errors
       }
     };
+    
     checkUpdate();
   }, []);
 
