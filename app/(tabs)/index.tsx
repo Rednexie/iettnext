@@ -73,41 +73,53 @@ export default function HomeScreen() {
   // Daily update check
   useEffect(() => {
     const checkUpdate = async () => {
+      const now = Date.now(); // Declare 'now' here
+
       try {
-        const now = Date.now();
-        const last = await AsyncStorage.getItem('lastUpdateCheck');
+        const last = await AsyncStorage.getItem('updateCheck');
+        
+        let shouldCheckForUpdate = false;
 
-        // Only check for updates once per day
-        if (last && now - parseInt(last) < 24 * 60 * 60 * 1000) {
-          return;
+        if (ALWAYSUPDATE) {
+          shouldCheckForUpdate = true;
+        } else if (!last || (now - parseInt(last) >= 24 * 60 * 60 * 1000)) {
+          shouldCheckForUpdate = true;
         }
 
-        const res = await fetch('https://raw.githubusercontent.com/Rednexie/rednexie.github.io/main/iettnext.json');
-        if (!res.ok) return;
+        if (shouldCheckForUpdate) {
+          const res = await fetch('https://raw.githubusercontent.com/Rednexie/rednexie.github.io/main/iettnext.json');
+          if (!res.ok) {
+            console.log('Failed to fetch remote version data.');
+            return;
+          }
 
-        const remoteData = await res.json();
-        const localVersionData = remoteData['com.rednexie.iettnext'];
-        if (!localVersionData) return;
+          const remoteData = await res.json();
+          const remoteVersion = remoteData?.version;
+          const remoteMessage = remoteData?.message;
 
-        const remoteVersion = localVersionData.version;
-        const remoteMessage = localVersionData.message;
-        const currentVersion = Constants.expoConfig?.version || '1.0.0';
+          if (!remoteVersion) {
+            console.log('Remote version data is missing version.');
+            return;
+          }
+          
+          const currentVersion = localVersionData.version; 
+          const updateUrl = localVersionData.url;
 
-        if (remoteVersion !== currentVersion) {
-          Alert.alert(
-            'Güncelleme Var',
-            remoteMessage || `Yeni sürüm ${remoteVersion} mevcut.`,
-            [
-              { text: 'Daha Sonra', style: 'cancel' },
-              { text: 'Güncelle', onPress: () => Linking.openURL(localVersionData.url) }
-            ],
-            { cancelable: true }
-          );
+          if (remoteVersion !== currentVersion) {
+            Alert.alert(
+              'iettnext güncellendi!',
+              remoteMessage || `Yeni sürüm ${remoteVersion} mevcut.`,
+              [
+                { text: 'Daha Sonra', style: 'cancel' },
+                { text: 'Güncelle', onPress: () => Linking.openURL(updateUrl) }
+              ],
+              { cancelable: true }
+            );
+          }
         }
-
-        await AsyncStorage.setItem('lastUpdateCheck', now.toString());
+        await AsyncStorage.setItem('updateCheck', now.toString());
       } catch (e) {
-        // Silently fail - we don't want to bother users with update check errors
+        console.error('Error during update check:', e);
       }
     };
     

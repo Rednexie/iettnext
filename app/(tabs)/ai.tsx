@@ -8,7 +8,7 @@ import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, ScrollView,
 const API_BASE = 'https://iett.rednexie.workers.dev';
 
 // Define chat message type
-type Message = { sender: 'user' | 'assistant'; text: string; tool?: string; data?: any };
+type Message = { sender: 'user' | 'model'; text: string; tool?: string; data?: any };
 
 // Add UUID generator
 function generateUUID() {
@@ -83,7 +83,7 @@ export default function AiScreen() {
       if (!deviceId) return;
 
       // Add the message to the UI immediately
-      setMessages([...newMessages, { sender: 'assistant', text: '...' }]);
+      setMessages([...newMessages, { sender: 'model', text: '...' }]);
       setLoading(true);
       
       const response = await fetch(`${API_BASE}/api/chat`, {
@@ -96,13 +96,14 @@ export default function AiScreen() {
       });
       
       const data = await response.json();
+      console.log(data);
 
-      const assistantMessage: Message = { sender: 'assistant', text: data.content, tool: data.tool, data: data.data };
+      const assistantMessage: Message = { sender: 'model', text: data.content, tool: data.tool, data: data.data };
       setMessages([...newMessages, assistantMessage]);
       scrollRef.current?.scrollToEnd({ animated: true });
     } catch (e) {
       console.error(e);
-      const assistantMessage: Message = { sender: 'assistant', text: 'Üzgünüm, bir hata oluştu.' };
+      const assistantMessage: Message = { sender: 'model', text: 'Üzgünüm, bir hata oluştu.' };
       setMessages([...newMessages, assistantMessage]);
     } finally {
       setLoading(false);
@@ -271,7 +272,7 @@ export default function AiScreen() {
         keyboardShouldPersistTaps='handled'
       >
         <View style={[styles.messageBubble, styles.assistantBubble]}>
-          <Text style={styles.assistantText}>Merhaba, ben iettnext AI. İETT bilgilerine erişime sahibim, size istanbul ulaşımında yardımcı olmak için tasarlandım.</Text>
+          <Text style={styles.assistantText}>Merhaba, ben iettnext AI. Güncel İETT verilerine erişim sağlayabilirim, size istanbul ulaşımında yardımcı olmak için tasarlandım.</Text>
           <Text style={styles.assistantText}>Yapay zeka performansını artırmak için konuşma verileriniz işlenmektedir.</Text>
         </View>
         {messages.map((m, i) => {

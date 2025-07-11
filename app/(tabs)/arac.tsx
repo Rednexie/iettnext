@@ -353,7 +353,7 @@ const Arac = () => {
           
           {tasks.length === 0 && (
             <TouchableOpacity style={styles.tasksButton} onPress={viewTodayTasks}>
-              <Text style={styles.buttonText}>Bugünkü Tüm Görevleri Gör</Text>
+              <Text style={styles.buttonText}>Bugünkü Tüm Seferleri Gör</Text>
             </TouchableOpacity>
           )}
           
@@ -361,7 +361,7 @@ const Arac = () => {
           
           {tasks.length > 0 && (
             <View style={styles.tasksContainer}>
-              <Text style={styles.sectionTitle}>Bugünkü Görevler</Text>
+              <Text style={styles.sectionTitle}>Bugünkü Seferler</Text>
               {tasks.map((task, i) => (
                 <View key={i} style={styles.taskItem}>
                   <Text style={styles.taskTime}>{task.time ? `${task.time}` : 'Saat bilgisi yok'}</Text>
