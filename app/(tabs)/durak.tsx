@@ -93,10 +93,10 @@ function ArrivalCard({ arrival }: { arrival: Arrival }) {
   return (
     <View style={styles.resultContainer}>
       <Text style={[styles.resultHeaderText, { color: '#8a6cf1' }]}>
-        {arrival.hatkodu}
+        {arrival.hatkodu}{arrival.depar ? '-' : ''}
         <Text style={[styles.resultHeaderText, { color: '#8a6cf1' }]}> ⇒ {arrival.saat} ({arrival.dakika} dk) {arrival.son_hiz} km/sa</Text>
       </Text>
-      <Text style={styles.resultHeaderText}>{arrival.hatadi + (arrival.depar == true ? '-' : '')}</Text>
+      <Text style={styles.resultHeaderText}>{arrival.hatadi}</Text>
       <Text style={styles.carInfo} selectable={true}>{arrival.kapino} ({arrival.ototip})</Text>
       <View style={styles.carInfoRow}>
         <FontAwesome5 name="wifi" size={18} color={arrival.wifi ? '#4ade80' : '#ef4444'} style={styles.featureIcon} />
@@ -365,7 +365,7 @@ export default function DurakScreen() {
         {!selectedStop && query.trim() === '' && favoriteStops.length > 0 && (
           <View style={styles.favoritesContainer}>
             <ScrollView 
-              style={styles.favoritesScroll}
+              style={styles.favoritesScrollView}
               showsVerticalScrollIndicator={false}
               nestedScrollEnabled
             >
@@ -682,33 +682,6 @@ const styles = StyleSheet.create({
   },
   favoritesScrollView: { 
     paddingVertical: 4,
-  },
-  favoriteItem: { 
-    backgroundColor: 'transparent',
-    borderRadius: 3,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginRight: 10,
-    marginBottom: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#8a6cf1',
-  },
-  favoriteName: { 
-    color: '#e0e0e0',
-    fontSize: 14,
-    fontFamily: 'Inter_500Medium',
-    marginLeft: 6,
-  },
-  favoriteIcon: { 
-    marginRight: 4 
-  },
-  favoriteBtn: { 
-    marginLeft: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 8,
   },
   favoriteRemove: {
     marginLeft: 8,

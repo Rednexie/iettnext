@@ -2,6 +2,51 @@ import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, us
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Dimensions, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+
+// Helper component for dynamic font size
+import type { TextStyle } from 'react-native';
+
+interface AutoSizeTextProps {
+  content: string;
+  style?: TextStyle;
+  minFontSize?: number;
+  maxFontSize?: number;
+}
+
+const AutoSizeText: React.FC<AutoSizeTextProps> = ({ content, style, minFontSize = 8, maxFontSize = 14 }) => {
+  const [fontSize, setFontSize] = React.useState<number>(maxFontSize);
+  const textRef = React.useRef<Text>(null);
+
+  React.useEffect(() => {
+    setFontSize(maxFontSize);
+  }, [content, maxFontSize]);
+
+  React.useEffect(() => {
+    if (!textRef.current) return;
+    const measure = () => {
+      // @ts-ignore
+      textRef.current?.measure((x: number, y: number, width: number) => {
+        if (width > 180 && fontSize > minFontSize) {
+          setFontSize(f => Math.max(minFontSize, f - 1));
+        }
+      });
+    };
+    setTimeout(measure, 0);
+  }, [content, fontSize, minFontSize]);
+
+  return (
+    <Text
+      ref={textRef}
+      style={[style, { fontSize }]}
+      numberOfLines={1}
+      adjustsFontSizeToFit={false}
+    >
+      {content}
+    </Text>
+  );
+};
+
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Utility function to decode HTML entities and fix encoding issues
@@ -76,7 +121,7 @@ export default function HatScreen() {
 
   // Dynamic font size for line name
   const lineNameText = selected ? decodeHTMLEntities(selected.name) : '';
-  const lineNameFontSize = lineNameText.length > 20 ? 14 : 16;
+  const lineNameFontSize = lineNameText.length > 25 ? 11 : 14;
 
   // Parse station anchor HTML into text entries
   const parseAnchors = (html: string): string[] => {
@@ -335,29 +380,35 @@ export default function HatScreen() {
         )}
       </View>
       {!selected && query.trim() === '' && favoriteLines.length > 0 && (
-        <ScrollView
-          horizontal
-          style={[styles.suggestionsScrollView, { marginVertical: 8 }]}
-          showsHorizontalScrollIndicator={false}
-        >
-          {favoriteLines.map(f => (
-            <View key={f.code} style={[styles.suggestionItem, { marginHorizontal: 4 }]}>  
-              <TouchableOpacity
-                onPress={() => removeFavoriteLine(f.code)}
-                style={{ padding: 4, marginRight: 8 }}
-              >
-                <Ionicons name="star" size={16} color="#6a4cff" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => selectLine({ line: f.code, name: f.name })}
-                style={{ flex: 1 }}
-              >
-                <Text style={styles.lineCode}>{f.code}</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </ScrollView>
-      )}
+  <View style={styles.favoritesContainer}>
+    <Text style={styles.favoritesTitle}>Favori Hatlar</Text>
+    <View style={styles.favoritesList}>
+      {favoriteLines.map(f => {
+        let fontSize = 16;
+        if (f.name.length > 28) fontSize = 12;
+        else if (f.name.length > 20) fontSize = 13.5;
+        else if (f.name.length > 14) fontSize = 14.5;
+        return (
+          <View key={f.code} style={styles.favoriteItem}>
+            <TouchableOpacity
+              onPress={() => removeFavoriteLine(f.code)}
+              style={styles.favoriteBtn}
+            >
+              <Ionicons name="star" size={16} color="#6a4cff" style={styles.favoriteIcon} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => selectLine({ line: f.code, name: f.name })}
+              style={{ flex: 1, minWidth: 40, flexDirection: 'row', alignItems: 'center' }}
+            >
+              <Text style={styles.favoriteCode}>{f.code}</Text>
+              <Text style={styles.favoriteName}>{f.name}</Text>
+            </TouchableOpacity>
+          </View>
+        );
+      })} 
+    </View>
+  </View>
+)}
       {selected && (
         <View style={[styles.resultContainer, { paddingTop: 16 }]}>
           {loading ? (
@@ -641,7 +692,7 @@ const styles = StyleSheet.create({
   lineNameLarge: {
     color: '#ffffff',
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 16,
+    fontSize: 12,
   },
   backButton: {
     backgroundColor: '#6a4cff',
@@ -872,8 +923,74 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   suggestionsScrollView: { paddingHorizontal: 16 },
-  favoriteItem: { backgroundColor: 'rgba(138, 108, 241, 0.1)', borderRadius: 16, paddingVertical: 6, paddingHorizontal: 12, marginRight: 8, flexDirection: 'row', alignItems: 'center' },
-  favoriteName: { color: '#8a6cf1', fontSize: 14 },
-  favoriteIcon: { marginRight: 4 },
-  favoriteBtn: { marginHorizontal: 8, justifyContent: 'center', alignItems: 'center' },
+  favoritesContainer: {
+    marginVertical: 12,
+    paddingHorizontal: 16,
+  },
+  favoritesTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#8a6cf1',
+    marginLeft: 8,
+    marginBottom: 8,
+  },
+  favoritesScrollView: {
+    paddingVertical: 4,
+  },
+  favoritesList: {
+    flexDirection: 'column',
+    gap: 8,
+  },
+  favoriteItem: {
+    backgroundColor: 'rgba(13, 13, 26, 0.5)',
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#8a4cff',
+    borderWidth: 1,
+    borderColor: '#8a6cf1', // neon border
+    shadowColor: '#8a6cf1',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 60,
+    maxWidth: 350,
+  },
+
+
+  favoriteCode: {
+    backgroundColor: 'rgba(138, 108, 241, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 0,
+    color: '#8a6cf1',
+    fontFamily: 'Inter_500Medium',
+    marginRight: 12,
+    minWidth: 50,
+    textAlign: 'center',
+  },
+  favoriteName: {
+    color: '#a084ff', // neon purple
+    fontFamily: 'Inter_500Medium',
+    fontSize: 15,
+    flexShrink: 1,
+    flexGrow: 1,
+    textAlign: 'left',
+    flexWrap: 'wrap',
+    textShadowColor: '#8a6cf1',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 6,
+  },
+  favoriteIcon: {
+    marginRight: 4,
+  },
+  favoriteBtn: {
+    marginRight: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 4,
+  },
 });
