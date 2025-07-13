@@ -4,7 +4,7 @@
     "slug": "iettnext",
     "version": "0.0.5",
     "orientation": "portrait",
-    "icon": "./assets/images/iett.png",
+    "icon": "./assets/images/iettnext.png",
     "scheme": "iettnext",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -13,7 +13,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/iett.png",
+        "foregroundImage": "./assets/images/iettnext.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -22,14 +22,14 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/iett.png"
+      "favicon": "./assets/images/iettnext.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/iett.png",
+          "image": "./assets/images/iettnext.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
