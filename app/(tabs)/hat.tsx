@@ -121,7 +121,10 @@ export default function HatScreen() {
 
   // Dynamic font size for line name
   const lineNameText = selected ? decodeHTMLEntities(selected.name) : '';
-  const lineNameFontSize = lineNameText.length > 25 ? 11 : 14;
+  // make a three degree curve for the font size
+  // use ternary operator
+  const lineNameFontSize = lineNameText.length > 55 ? 8 : lineNameText.length > 45 ? 9 : lineNameText.length > 35 ? 11 : lineNameText.length > 27 ? 12 : 14
+  //const lineNameFontSize = lineNameText.length > 33 ? 11 : 14;
 
   // Parse station anchor HTML into text entries
   const parseAnchors = (html: string): string[] => {
