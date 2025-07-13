@@ -76,7 +76,7 @@ export default function HomeScreen() {
       const now = Date.now(); // Declare 'now' here
 
       try {
-        const last = await AsyncStorage.getItem('updateCheck');
+        const last = await AsyncStorage.getItem('lastUpdateCheck');
         
         let shouldCheckForUpdate = false;
 
@@ -117,7 +117,7 @@ export default function HomeScreen() {
             );
           }
         }
-        await AsyncStorage.setItem('updateCheck', now.toString());
+        await AsyncStorage.setItem('lastUpdateCheck', now.toString());
       } catch (e) {
         console.error('Error during update check:', e);
       }
