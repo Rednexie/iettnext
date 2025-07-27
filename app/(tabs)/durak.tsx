@@ -68,7 +68,7 @@ function ArrivalCard({ arrival }: { arrival: Arrival }) {
           return;
         }
         try {
-          const response = await fetch('https://iett.deno.dev/location-transform', {
+          const response = await fetch('https://iett.rednexie.workers.dev/location-transform', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ lon, lat }),
@@ -128,7 +128,10 @@ export default function DurakScreen() {
   const [error, setError] = useState('');
   const [announcements, setAnnouncements] = useState<Array<{HAT: string, BILGI: string}>>([]);
   const [modalVisible, setModalVisible] = useState(false);
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [favoriteStops, setFavoriteStops] = useState<{ stopId: number; name: string; direction: string }[]>([]);
+  const [selectedLines, setSelectedLines] = useState<Set<string>>(new Set());
+  const [availableLines, setAvailableLines] = useState<Set<string>>(new Set());
   const isFavoriteStop = selectedStop ? favoriteStops.some(f => f.stopId === selectedStop.DURAK_DURAK_KODU) : false;
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -224,6 +227,41 @@ export default function DurakScreen() {
     await fetchArrivals(suggestion.DURAK_DURAK_KODU);
   }
 
+  function updateAvailableLines(arrivals: Arrival[]) {
+    const lines = new Set<string>();
+    arrivals.forEach(arrival => {
+      if (arrival.hatkodu) {
+        lines.add(arrival.hatkodu);
+      }
+    });
+    setAvailableLines(lines);
+  }
+
+  function shouldShowArrival(arrival: Arrival) {
+    if (selectedLines.size === 0) return true;
+    if (!arrival?.hatkodu) return true;
+    
+    return Array.from(selectedLines).some(selectedLine => 
+      arrival.hatkodu === selectedLine || 
+      arrival.hatkodu.startsWith(selectedLine + '-') ||
+      selectedLine.startsWith(arrival.hatkodu + '-')
+    );
+  }
+
+  function toggleLineFilter(line: string) {
+    const newSelectedLines = new Set(selectedLines);
+    if (newSelectedLines.has(line)) {
+      newSelectedLines.delete(line);
+    } else {
+      newSelectedLines.add(line);
+    }
+    setSelectedLines(newSelectedLines);
+  }
+
+  function clearFilters() {
+    setSelectedLines(new Set());
+  }
+
   async function fetchArrivals(stopId: number) {
     setLoading(true);
     setArrivals([]);
@@ -239,6 +277,7 @@ export default function DurakScreen() {
       }
       const data = await response.json();
       setArrivals(data);
+      updateAvailableLines(data);
     } catch (e) {
       setError('Otobüs bilgileri alınamadı.');
       console.error("Fetch Arrivals Error:", e);
@@ -397,16 +436,26 @@ export default function DurakScreen() {
 
         {selectedStop && (
           <View style={styles.buttonContainer}>
-            <TouchableOpacity style={[styles.refreshBtn, { marginRight: 8 }]} onPress={handleRefresh}>
+            <TouchableOpacity style={styles.actionBtn} onPress={handleRefresh}>
               <FontAwesome5 name="sync-alt" size={18} color="#fff" />
-              <Text style={styles.refreshBtnText}>Yenile</Text>
+              <Text style={styles.actionBtnText}>Yenile</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.refreshBtn} onPress={handleAnnouncementsPress}>
+            <TouchableOpacity 
+              style={[styles.actionBtn, selectedLines.size > 0 && styles.activeFilterBtn]} 
+              onPress={() => setFilterModalVisible(true)}
+            >
+              <FontAwesome5 name="filter" size={16} color="#fff" />
+              <Text style={styles.actionBtnText}>{selectedLines.size > 0 ? `${selectedLines.size} Filtre` : 'Filtrele'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionBtn} onPress={handleAnnouncementsPress}>
               <FontAwesome5 name="bell" size={18} color="#fff" />
-              <Text style={styles.refreshBtnText}>Duyurular</Text>
+              <Text style={styles.actionBtnText}>Duyuru</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.refreshBtn, styles.favoriteBtn]} onPress={toggleFavoriteStop}>
-              <Ionicons name={isFavoriteStop ? 'star' : 'star-outline'} size={20} color="#fff" />
+            <TouchableOpacity 
+              style={[styles.actionBtn, styles.smallStarBtn, styles.favoriteBtn]} 
+              onPress={toggleFavoriteStop}
+            >
+              <Ionicons name={isFavoriteStop ? 'star' : 'star-outline'} size={18} color="#fff" />
             </TouchableOpacity>
           </View>
         )}
@@ -428,7 +477,7 @@ export default function DurakScreen() {
           <View style={styles.modalBackground}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Durak Duyuruları</Text>
+                <Text style={styles.modalTitle}>Durak Duyuru</Text>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
                   <Text style={styles.modalClose}>×</Text>
                 </TouchableOpacity>
@@ -458,7 +507,54 @@ export default function DurakScreen() {
           </View>
         </Modal>
 
-        {!loading && arrivals.map((arrival, idx) => <ArrivalCard key={idx} arrival={arrival} />)}
+        {/* Filter Modal */}
+        <Modal
+          visible={filterModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setFilterModalVisible(false)}
+        >
+          <View style={styles.modalBackground}>
+            <View style={[styles.modalContent, { maxHeight: '80%' }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Hat Filtreleme</Text>
+                <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
+                  <Text style={styles.modalClose}>×</Text>
+                </TouchableOpacity>
+              </View>
+              
+
+
+              <ScrollView style={styles.filterList} contentContainerStyle={styles.filterGrid}>
+                {Array.from(availableLines).sort().map((line, idx) => (
+                  <TouchableOpacity
+                    key={line}
+                    style={[
+                      styles.squareFilterItem,
+                      selectedLines.has(line) && styles.selectedFilterItem
+                    ]}
+                    onPress={() => toggleLineFilter(line)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.filterItemText,
+                      selectedLines.has(line) && styles.selectedFilterItemText
+                    ]}>
+                      {line}
+                    </Text>
+                    {selectedLines.has(line) && (
+                      <Ionicons name="checkmark" size={18} color="#8a6cf1" style={{ position: 'absolute', top: 4, right: 4 }} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {!loading && arrivals.filter(arrival => shouldShowArrival(arrival)).map((arrival, idx) => (
+          <ArrivalCard key={idx} arrival={arrival} />
+        ))}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -538,7 +634,67 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
   favoriteIcon: { marginRight: 4 },
-  favoriteBtn: { marginLeft: 8, justifyContent: 'center', alignItems: 'center' },
+  favoriteBtn: { marginLeft: 0, justifyContent: 'center', alignItems: 'center' },
+  activeFilterBtn: {
+    backgroundColor: '#8a6cf1',
+  },
+  filterActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(138, 108, 241, 0.1)',
+  },
+  clearFilterBtn: {
+    padding: 6,
+    borderRadius: 4,
+  },
+  clearFilterText: {
+    color: '#8a6cf1',
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+  },
+  disabledText: {
+    opacity: 0.5,
+  },
+  filterList: {
+    padding: 16,
+    maxHeight: 320,
+  },
+  filterGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
+  squareFilterItem: {
+    width: '23%', // 4 per row with margin
+    height: 64,
+    margin: '1%',
+    backgroundColor: 'rgba(13, 13, 26, 0.6)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(138, 108, 241, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  selectedFilterItem: {
+    backgroundColor: 'rgba(138, 108, 241, 0.1)',
+    borderColor: 'rgba(138, 108, 241, 0.5)',
+  },
+  filterItemText: {
+    color: '#e0e0e0',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 16,
+  },
+  selectedFilterItemText: {
+    color: '#8a6cf1',
+    fontFamily: 'Inter_600SemiBold',
+  },
   selectedItem: { backgroundColor: 'rgba(138, 108, 241, 0.34)' },
   lineCode: {
     backgroundColor: 'rgba(138, 108, 241, 0.2)',
@@ -594,13 +750,47 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
     width: '100%',
     marginVertical: 16,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#6a4cff',
+    borderRadius: 0,
+    paddingVertical: 0,
+    paddingHorizontal: 10,
+    marginHorizontal: 4, // small margin between all buttons
+    minWidth: 42,
+    minHeight: 42,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  smallStarBtn: {
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    minWidth: 42,
+    minHeight: 42,
+    width: 42,
+    height: 42,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionBtnText: {
+    color: '#fff',
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 13,
+    marginLeft: 8,
   },
   refreshBtnText: {
     color: '#fff',
     fontFamily: 'Inter_600SemiBold', // Match HatScreen buttonText
-    fontSize: 16, // Match HatScreen buttonText
+    fontSize: 13, // Smaller font size for buttons
     marginLeft: 8, // Space from icon
   },
   carInfoRow: {

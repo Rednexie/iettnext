@@ -94,8 +94,178 @@ interface DepartureTable {
 };
 
 // const API_BASE = 'http://192.168.1.4:3000'
-const API_BASE = 'https://iett.deno.dev'
+const API_BASE = 'http://iett.rednexie.workers.dev'
 const { width } = Dimensions.get('window');
+
+function openGoogleMaps(lat: number, lon: number) {
+  const url = `https://maps.google.com/?q=${lat},${lon}`;
+  // @ts-ignore
+  if (typeof window !== 'undefined' && window.open) {
+    window.open(url, '_blank');
+  } else {
+    // React Native Linking
+    import('react-native').then(({ Linking }) => Linking.openURL(url));
+  }
+}
+
+interface Vehicle {
+  vehicleDoorCode: string;
+  direction?: string;
+  lat?: number;
+  lon?: number;
+  locationResolved?: boolean;
+  locationName?: string;
+}
+
+const VehiclesByDirection = ({ line }: { line: string }) => {
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [locationLoading, setLocationLoading] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    
+    fetch(`${API_BASE}/line-vehicles`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ line }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (isMounted) {
+          // Initialize vehicles with locationResolved flag
+          const vehiclesWithLocationStatus = (data.vehicles || []).map((v: Vehicle) => ({
+            ...v,
+            locationResolved: false
+          }));
+          setVehicles(vehiclesWithLocationStatus);
+          
+          // Resolve locations after a short delay to show loading state
+          setTimeout(() => {
+            if (isMounted) {
+              setVehicles(prevVehicles => 
+                prevVehicles.map(v => ({
+                  ...v,
+                  locationResolved: true
+                }))
+              );
+            }
+          }, 500);
+        }
+      })
+      .catch(() => isMounted && setVehicles([]))
+      .finally(() => isMounted && setLoading(false));
+      
+    return () => { isMounted = false; };
+  }, [line]);
+
+  if (loading) return <ActivityIndicator size="small" color="#8a6cf1" style={{ marginVertical: 20 }} />;
+  if (!vehicles.length) return <Text style={styles.noDataText}>Bu hatta araç bulunamadı.</Text>;
+
+  // Resolve location names
+  const resolveLocation = async (vehicle: Vehicle) => {
+    if (!vehicle.lat || !vehicle.lon) return;
+    
+    try {
+      const response = await fetch(`${API_BASE}/location-transform`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          lon: vehicle.lon, 
+          lat: vehicle.lat 
+        }),
+      });
+      
+      const data = await response.text();
+      if (data) {
+        setVehicles(prevVehicles => 
+          prevVehicles.map(v => 
+            v.vehicleDoorCode === vehicle.vehicleDoorCode 
+              ? { ...v, locationName: data }
+              : v
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error resolving location:', error);
+    }
+  };
+
+  // Group vehicles by direction
+  const grouped = vehicles.reduce<Record<string, Vehicle[]>>((acc, v) => {
+    const dir = (v.direction || '').trim() || 'Bilinmeyen Yön';
+    if (!acc[dir]) {
+      acc[dir] = [];
+    }
+    acc[dir].push(v);
+    
+    // Resolve location if not already done
+    if (v.lat && v.lon && !v.locationName) {
+      resolveLocation(v);
+    }
+    
+    return acc;
+  }, {});
+
+  return (
+    <ScrollView>
+      {Object.entries(grouped).map(([direction, group]) => (
+        <View key={direction} style={{ marginBottom: 18 }}>
+          <Text style={{ color: '#8a6cf1', fontSize: 14, fontFamily: 'Inter_600SemiBold', marginBottom: 5, marginTop: 4 }}>
+            {direction}
+          </Text>
+          {group.map((v) => (
+            <View key={v.vehicleDoorCode} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, paddingLeft: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Text 
+                  selectable
+                  style={{ 
+                    color: '#e0e0e0', 
+                    fontFamily: 'Inter_500Medium', 
+                    fontSize: 11,
+                    paddingVertical: 4,
+                  }}
+                  onPress={(e) => {
+                    // This will ensure the entire text is selected when tapped
+                    const textComponent = e.target as any;
+                    if (textComponent && textComponent.setNativeProps) {
+                      textComponent.setNativeProps({
+                        selection: { start: 0, end: v.vehicleDoorCode.length }
+                      });
+                    }
+                  }}
+                >
+                  {v.vehicleDoorCode}
+                </Text>
+              </View>
+              <TouchableOpacity 
+                onPress={() => v.lat && v.lon && openGoogleMaps(v.lat, v.lon)}
+                disabled={!v.locationResolved || !v.lat || !v.lon}
+              >
+                <Text style={{ 
+                  color: v.locationResolved && v.lat && v.lon ? '#8a6cf1' : '#a0a0a0', 
+                  fontFamily: 'Inter_400Regular', 
+                  fontSize: 9,
+                  textDecorationLine: v.locationResolved && v.lat && v.lon ? 'underline' : 'none'
+                }}>
+                  {v.locationName || 
+                   (v.locationResolved 
+                     ? (v.lat && v.lon ? `${v.lat.toFixed(5)}, ${v.lon.toFixed(5)}` : 'Konum yok')
+                     : 'yükleniyor...')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      ))}
+    </ScrollView>
+  );
+};
+
+
+
+
 
 export default function HatScreen() {
   const [fontsLoaded] = useFonts({
@@ -115,8 +285,15 @@ export default function HatScreen() {
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [direction, setDirection] = useState(0);
-  const [activeTab, setActiveTab] = useState<'times'|'stations'>('times');
+  const [activeTab, setActiveTab] = useState<'times' | 'stations' | 'vehicles' | 'about'>('times');
   const [favoriteLines, setFavoriteLines] = useState<{ code: string; name: string }[]>([]);
+  const [lineInfo, setLineInfo] = useState<{
+    tripDuration?: string;
+    lineType?: string;
+    fareInfo?: string;
+    loading: boolean;
+    error?: string;
+  }>({ loading: false });
   const isFavoriteLine = selected ? favoriteLines.some(f => f.code === selected.line) : false;
 
   // Dynamic font size for line name
@@ -211,6 +388,43 @@ export default function HatScreen() {
       }
     };
   }, [query]);
+
+  // Fetch line information when the about tab is active and we have a selected line
+  useEffect(() => {
+    const fetchLineInfo = async () => {
+      if (activeTab === 'about' && selected) {
+        setLineInfo(prev => ({ ...prev, loading: true, error: undefined }));
+        try {
+          const response = await fetch(`${API_BASE}/line-information`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ line: selected.line })
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to fetch line information');
+          }
+          
+          const data = await response.json();
+          setLineInfo({
+            tripDuration: data.tripDuration,
+            lineType: data.lineType,
+            fareInfo: data.fareInfo,
+            loading: false
+          });
+        } catch (error) {
+          console.error('Error fetching line information:', error);
+          setLineInfo(prev => ({
+            ...prev,
+            loading: false,
+            error: 'Bilgi yüklenirken bir hata oluştu'
+          }));
+        }
+      }
+    };
+
+    fetchLineInfo();
+  }, [activeTab, selected]);
 
   // Parse HTML departure tables by matching each <table class="line-table">
   const parseLineTimeTable = (html: string): DepartureTable[] => {
@@ -423,13 +637,25 @@ export default function HatScreen() {
                   style={[styles.tabItem, activeTab === 'times' && styles.tabItemActive]}
                   onPress={() => setActiveTab('times')}
                 >
-                  <Text style={[styles.tabItemText, activeTab === 'times' && styles.activeTabItem]}>Sefer Saatleri</Text>
+                  <Text style={[styles.tabItemText, activeTab === 'times' && styles.activeTabItem]}>Saatler</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.tabItem, activeTab === 'stations' && styles.tabItemActive]}
                   onPress={() => setActiveTab('stations')}
                 >
                   <Text style={[styles.tabItemText, activeTab === 'stations' && styles.activeTabItem]}>Duraklar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.tabItem, activeTab === 'vehicles' && styles.tabItemActive]}
+                  onPress={() => setActiveTab('vehicles')}
+                >
+                  <Text style={[styles.tabItemText, activeTab === 'vehicles' && styles.activeTabItem]}>Araçlar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.tabItem, activeTab === 'about' && styles.tabItemActive]}
+                  onPress={() => setActiveTab('about')}
+                >
+                  <Text style={[styles.tabItemText, activeTab === 'about' && styles.activeTabItem]}>Bilgi</Text>
                 </TouchableOpacity>
               </View>
               <View style={styles.resultHeader}>
@@ -447,75 +673,126 @@ export default function HatScreen() {
                   <Text style={styles.announcementButtonText}>Hat Duyuruları</Text>
                 </TouchableOpacity>
               )}
-              {activeTab === 'times' ? (
-                <View style={styles.contentCard}>
-                  <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Sefer Saatleri</Text>
-                    <TouchableOpacity style={styles.favoriteBtn} onPress={toggleFavoriteLine}>
-                      <Ionicons name={isFavoriteLine ? 'star' : 'star-outline'} size={24} color="#8a6cf1" />
-                    </TouchableOpacity>
-                    <Switch
-                      trackColor={{ false: '#0d0d1a', true: '#0d0d1a' }}
-                      thumbColor={direction ? '#8a6cf1' : '#6a4cff'}
-                      ios_backgroundColor="#0d0d1a"
-                      onValueChange={(val) => setDirection(val ? 1 : 0)}
-                      value={direction === 1}
-                      style={styles.directionSwitch}
-                    />
-                  </View>
-                  {timetable.length > 0 && timetable[direction] ? (
-                    <>
-                      <Text style={[styles.sectionTitle, { fontSize: 14, marginBottom: 8 }]}>{timetable[direction].title}</Text>
-                      <View style={styles.tableHeader}>
-                        <Text style={[styles.tableHeaderCell, { flex: 1 }]}>İş Günleri</Text>
-                        <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Cumartesi</Text>
-                        <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Pazar</Text>
-                      </View>
-                      {timetable[direction].schedule.I.map((_, idx) => (
-                        <View key={idx} style={[styles.tableRow, idx % 2 === 1 && styles.tableRowAlt]}>
-                          <Text style={[styles.tableCell, { flex: 1 }, timetable[direction].schedule.I[idx]?.isSpecial && { color: 'red' }]}>
-                            {formatDepartureTime(timetable[direction].schedule.I[idx])}
-                          </Text>
-                          <Text style={[styles.tableCell, { flex: 1 }, timetable[direction].schedule.C[idx]?.isSpecial && { color: 'red' }]}>
-                            {formatDepartureTime(timetable[direction].schedule.C[idx])}
-                          </Text>
-                          <Text style={[styles.tableCell, { flex: 1 }, timetable[direction].schedule.P[idx]?.isSpecial && { color: 'red' }]}>
-                            {formatDepartureTime(timetable[direction].schedule.P[idx])}
-                          </Text>
-                        </View>
-                      ))}
-                    </>
-                  ) : (
-                    <Text style={styles.noDataText}>Bu hat için sefer saatleri bulunmamaktadır.</Text>
-                  )}
-                </View>
-              ) : (
-                <View style={styles.contentCard}>
-                  <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Duraklar</Text>
-                    <TouchableOpacity style={styles.favoriteBtn} onPress={toggleFavoriteLine}>
-                      <Ionicons name={isFavoriteLine ? 'star' : 'star-outline'} size={24} color="#8a6cf1" />
-                    </TouchableOpacity>
-                    <Switch
-                      trackColor={{ false: '#0d0d1a', true: '#0d0d1a' }}
-                      thumbColor={direction ? '#8a6cf1' : '#6a4cff'}
-                      ios_backgroundColor="#0d0d1a"
-                      onValueChange={(val) => setDirection(val ? 1 : 0)}
-                      value={direction === 1}
-                      style={styles.directionSwitch}
-                    />
-                  </View>
-                  <View style={styles.stationContainer}>
-                    <View style={styles.stationLine} />
-                    {stations.map((station, index) => (
-                      <View key={index} style={styles.stationItem}>
-                        <View style={styles.stationDot} />
-                        <Text style={styles.stationName}>{decodeHTMLEntities(station)}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
+              {activeTab === 'times' && (
+  <View style={styles.contentCard}>
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>Sefer Saatleri</Text>
+      <TouchableOpacity style={styles.favoriteBtn} onPress={toggleFavoriteLine}>
+        <Ionicons name={isFavoriteLine ? 'star' : 'star-outline'} size={24} color="#8a6cf1" />
+      </TouchableOpacity>
+      <Switch
+        trackColor={{ false: '#0d0d1a', true: '#0d0d1a' }}
+        thumbColor={direction ? '#8a6cf1' : '#6a4cff'}
+        ios_backgroundColor="#0d0d1a"
+        onValueChange={(val) => setDirection(val ? 1 : 0)}
+        value={direction === 1}
+        style={styles.directionSwitch}
+      />
+    </View>
+    {timetable.length > 0 && timetable[direction] ? (
+      <>
+        <Text style={[styles.sectionTitle, { fontSize: 14, marginBottom: 8 }]}>{timetable[direction].title}</Text>
+        <View style={styles.tableHeader}>
+          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>İş Günleri</Text>
+          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Cumartesi</Text>
+          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Pazar</Text>
+        </View>
+        {timetable[direction].schedule.I.map((_, idx) => (
+          <View key={idx} style={[styles.tableRow, idx % 2 === 1 && styles.tableRowAlt]}>
+            <Text style={[styles.tableCell, { flex: 1 }, timetable[direction].schedule.I[idx]?.isSpecial && { color: 'red' }]}> 
+              {formatDepartureTime(timetable[direction].schedule.I[idx])}
+            </Text>
+            <Text style={[styles.tableCell, { flex: 1 }, timetable[direction].schedule.C[idx]?.isSpecial && { color: 'red' }]}> 
+              {formatDepartureTime(timetable[direction].schedule.C[idx])}
+            </Text>
+            <Text style={[styles.tableCell, { flex: 1 }, timetable[direction].schedule.P[idx]?.isSpecial && { color: 'red' }]}> 
+              {formatDepartureTime(timetable[direction].schedule.P[idx])}
+            </Text>
+          </View>
+        ))}
+      </>
+    ) : (
+      <Text style={styles.noDataText}>Bu hat için sefer saatleri bulunmamaktadır.</Text>
+    )}
+  </View>
+)}
+{activeTab === 'stations' && (
+  <View style={styles.contentCard}>
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>Duraklar</Text>
+      <TouchableOpacity style={styles.favoriteBtn} onPress={toggleFavoriteLine}>
+        <Ionicons name={isFavoriteLine ? 'star' : 'star-outline'} size={24} color="#8a6cf1" />
+      </TouchableOpacity>
+      <Switch
+        trackColor={{ false: '#0d0d1a', true: '#0d0d1a' }}
+        thumbColor={direction ? '#8a6cf1' : '#6a4cff'}
+        ios_backgroundColor="#0d0d1a"
+        onValueChange={(val) => setDirection(val ? 1 : 0)}
+        value={direction === 1}
+        style={styles.directionSwitch}
+      />
+    </View>
+    <View style={styles.stationContainer}>
+      <View style={styles.stationLine} />
+      {stations.map((station, index) => (
+        <View key={index} style={styles.stationItem}>
+          <View style={styles.stationDot} />
+          <Text style={styles.stationName}>{decodeHTMLEntities(station)}</Text>
+        </View>
+      ))}
+    </View>
+  </View>
+)}
+{activeTab === 'vehicles' && (
+  <View style={styles.contentCard}>
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>Araçlar</Text>
+    </View>
+    {selected ? (
+      <VehiclesByDirection line={selected.line} />
+    ) : (
+      <Text style={styles.noDataText}>Bir hat seçiniz.</Text>
+    )}
+  </View>
+)}
+{activeTab === 'about' && (
+  <View style={styles.contentCard}>
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>Hat Bilgileri</Text>
+    </View>
+    <View style={styles.aboutContainer}>
+      {lineInfo.loading ? (
+        <ActivityIndicator size="small" color="#8a6cf1" style={styles.loader} />
+      ) : lineInfo.error ? (
+        <Text style={[styles.aboutText, { color: '#ff6b6b' }]}>{lineInfo.error}</Text>
+      ) : (
+        <>
+          {lineInfo.tripDuration && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Sefer Süresi:</Text>
+              <Text style={styles.infoValue}>{lineInfo.tripDuration}</Text>
+            </View>
+          )}
+          {lineInfo.lineType && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Hat Tipi:</Text>
+              <Text style={styles.infoValue}>{lineInfo.lineType}</Text>
+            </View>
+          )}
+          {lineInfo.fareInfo && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Tarife Bilgisi:</Text>
+              <Text style={styles.infoValue}>{lineInfo.fareInfo}</Text>
+            </View>
+          )}
+          {!lineInfo.tripDuration && !lineInfo.lineType && !lineInfo.fareInfo && (
+            <Text style={styles.aboutText}>Bu hat için bilgi bulunamadı.</Text>
+          )}
+        </>
+      )}
+    </View>
+  </View>
+)}
             </>
           )}
         </View>
@@ -865,20 +1142,6 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   modalClose: {
-    fontSize: 24,
-    color: '#a0a0a0',
-    fontWeight: 'bold',
-  },
-  announcementList: {
-    padding: 16,
-  },
-  announcementItem: {
-    backgroundColor: 'rgba(138, 108, 241, 0.1)',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#8a6cf1',
   },
   announcementItemWarning: {
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
@@ -916,7 +1179,7 @@ const styles = StyleSheet.create({
   },
   tabItemText: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 16,
+    fontSize: 12,
     color: '#a0a0a0',
   },
   activeTabItem: {
@@ -991,9 +1254,42 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   favoriteBtn: {
-    marginRight: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginLeft: 10,
     padding: 4,
+  },
+  aboutContainer: {
+    padding: 16,
+  },
+  aboutText: {
+    color: '#e0e0e0',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  infoLabel: {
+    color: '#a0a0a0',
+    fontFamily: 'Inter_600SemiBold',
+    width: 120,
+    fontSize: 13,
+  },
+  infoValue: {
+    color: '#e0e0e0',
+    fontFamily: 'Inter_400Regular',
+    flex: 1,
+    fontSize: 13,
+  },
+  announcementList: {
+    padding: 16,
+  },
+  announcementItem: {
+    backgroundColor: 'rgba(138, 108, 241, 0.1)',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#8a6cf1',
   },
 });
