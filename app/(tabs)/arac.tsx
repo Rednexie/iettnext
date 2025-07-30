@@ -116,7 +116,7 @@ const Arac = () => {
         {
           id: vehicleId,
           name: result.hatadi || 'Araç',
-          plate: result.plaka,
+          plate: (result.plaka || '').replace(/\s/g, ''),
           doorCode: result.KapıKodu
         }
       ]);
@@ -205,7 +205,7 @@ const Arac = () => {
                 value={query}
                 onChangeText={setQuery}
                 placeholder="Plaka veya Kapı Kodu girin..."
-                placeholderTextColor="#6a6a8a"
+                placeholderTextColor="#ccc"
                 onSubmitEditing={sendQuery}
                 returnKeyType="search"
                 autoCapitalize="characters"
@@ -474,27 +474,22 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: '100%',
     marginBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(26, 26, 46, 0.6)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(138, 108, 241, 0.2)',
   },
   input: {
-    flex: 1,
-    color: '#fff',
+    backgroundColor: 'rgba(13, 13, 26, 0.6)',
+    borderWidth: 1,
+    borderColor: 'rgba(138, 108, 241, 0.2)',
+    borderRadius: 8,
+    padding: 14,
+    color: '#e0e0e0',
+    width: '100%',
     fontFamily: 'Inter_400Regular',
-    paddingRight: 40,
-    height: 50,
+    minHeight: 48,
   },
   clearButton: {
     position: 'absolute',
-    right: 8,
-    top: '50%',
-    marginTop: -10,
-    zIndex: 1,
+    right: 12,
+    top: 14,
   },
   button: {
     backgroundColor: '#6a4cff',

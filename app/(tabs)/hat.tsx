@@ -94,7 +94,7 @@ interface DepartureTable {
 };
 
 // const API_BASE = 'http://192.168.1.4:3000'
-const API_BASE = 'http://iett.rednexie.workers.dev'
+const API_BASE = 'https://iett.rednexie.workers.dev'
 const { width } = Dimensions.get('window');
 
 function openGoogleMaps(lat: number, lon: number) {
@@ -163,11 +163,29 @@ const VehiclesByDirection = ({ line }: { line: string }) => {
   if (loading) return <ActivityIndicator size="small" color="#8a6cf1" style={{ marginVertical: 20 }} />;
   if (!vehicles.length) return <Text style={styles.noDataText}>Bu hatta araç bulunamadı.</Text>;
 
-  // Resolve location names
+  // Resolve location names with caching
   const resolveLocation = async (vehicle: Vehicle) => {
     if (!vehicle.lat || !vehicle.lon) return;
     
+    const key = `${vehicle.lon},${vehicle.lat}`;
+    
     try {
+      // Check cache first
+      const raw = await AsyncStorage.getItem('locationCache');
+      const cache: Record<string, string> = raw ? JSON.parse(raw) : {};
+      
+      if (cache[key]) {
+        setVehicles(prevVehicles => 
+          prevVehicles.map(v => 
+            v.vehicleDoorCode === vehicle.vehicleDoorCode 
+              ? { ...v, locationName: cache[key] }
+              : v
+          )
+        );
+        return;
+      }
+      
+      // If not in cache, fetch from API
       const response = await fetch(`${API_BASE}/location-transform`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -177,18 +195,30 @@ const VehiclesByDirection = ({ line }: { line: string }) => {
         }),
       });
       
-      const data = await response.text();
-      if (data) {
+      const locationText = await response.text();
+      if (locationText) {
+        // Update cache
+        cache[key] = locationText;
+        await AsyncStorage.setItem('locationCache', JSON.stringify(cache));
+        
+        // Update UI
         setVehicles(prevVehicles => 
           prevVehicles.map(v => 
             v.vehicleDoorCode === vehicle.vehicleDoorCode 
-              ? { ...v, locationName: data }
+              ? { ...v, locationName: locationText }
               : v
           )
         );
       }
     } catch (error) {
       console.error('Error resolving location:', error);
+      setVehicles(prevVehicles => 
+        prevVehicles.map(v => 
+          v.vehicleDoorCode === vehicle.vehicleDoorCode 
+            ? { ...v, locationName: 'Konum Bilinmiyor' }
+            : v
+        )
+      );
     }
   };
 
@@ -315,22 +345,49 @@ export default function HatScreen() {
     return result;
   };
 
+  // In-memory cache for stations
+  const stationsCache = React.useRef<Record<string, {forward: string[], backward: string[], timestamp: number}>>({});
+  const STATIONS_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
   // Load stations for lineCode and direction
   const loadStations = async (lineCode: string, dir: number) => {
+    // Only load stations if we're on the stations tab or about to switch to it
+    if (activeTab !== 'stations' && activeTab !== 'times') {
+      return;
+    }
+
+    const cacheKey = `${lineCode}`;
+    const now = Date.now();
+
+    // Check in-memory cache first
+    if (stationsCache.current[cacheKey] && 
+        now - stationsCache.current[cacheKey].timestamp < STATIONS_CACHE_TTL) {
+      const { forward, backward } = stationsCache.current[cacheKey];
+      setStations(dir === 0 ? forward : backward);
+      return;
+    }
+
     try {
       const url = `${API_BASE}/api/route-stations?hatkod=${lineCode}&hatstart=x&hatend=y&langid=1`;
       const res = await fetch(url);
       if (!res.ok) {
-        console.error(`Error loading stations, status ${res.status}`);
-        setStations([]);
-        return;
+        throw new Error(`Error loading stations, status ${res.status}`);
       }
+      
       const text = await res.text();
       const allLinks = parseAnchors(text);
       const restartIdx = allLinks.findIndex((s, i) => i > 0 && /^\s*1\./.test(s));
       const splitIndex = restartIdx !== -1 ? restartIdx : Math.ceil(allLinks.length / 2);
       const forwardLinks = allLinks.slice(0, splitIndex);
       const backwardLinks = allLinks.slice(splitIndex);
+      
+      // Update cache
+      stationsCache.current[cacheKey] = {
+        forward: forwardLinks,
+        backward: backwardLinks,
+        timestamp: now
+      };
+      
       setStations(dir === 0 ? forwardLinks : backwardLinks);
     } catch (e) {
       console.error('Error loading stations:', e);
@@ -338,10 +395,13 @@ export default function HatScreen() {
     }
   };
 
-  // Reload stations when selected line or direction changes
+  // Reload stations when selected line, direction, or tab changes
   useEffect(() => {
-    if (selected) loadStations(selected.line, direction);
-  }, [selected, direction]);
+    // Only load stations if we're on the stations tab or times tab
+    if (activeTab === 'stations' || activeTab === 'times') {
+      if (selected) loadStations(selected.line, direction);
+    }
+  }, [selected, direction, activeTab]);
 
   // Debounce and cancel previous fetches for suggestions
   const debounceTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -389,12 +449,40 @@ export default function HatScreen() {
     };
   }, [query]);
 
+  // Helper function to check if cache is expired (1 week)
+  const isCacheExpired = (timestamp: number): boolean => {
+    const oneWeekInMs = 7 * 24 * 60 * 60 * 1000; // 1 week in milliseconds
+    return Date.now() - timestamp > oneWeekInMs;
+  };
+
   // Fetch line information when the about tab is active and we have a selected line
   useEffect(() => {
     const fetchLineInfo = async () => {
       if (activeTab === 'about' && selected) {
         setLineInfo(prev => ({ ...prev, loading: true, error: undefined }));
+        
+        const cacheKey = `lineInfo_${selected.line}`;
+        
         try {
+          // Try to get from cache first
+          const cachedData = await AsyncStorage.getItem(cacheKey);
+          
+          if (cachedData) {
+            const { data, timestamp } = JSON.parse(cachedData);
+            
+            // If cache is still valid, use it
+            if (!isCacheExpired(timestamp)) {
+              setLineInfo({
+                tripDuration: data.tripDuration,
+                lineType: data.lineType,
+                fareInfo: data.fareInfo,
+                loading: false
+              });
+              return; // Exit early if using valid cache
+            }
+          }
+          
+          // If no valid cache, fetch from API
           const response = await fetch(`${API_BASE}/line-information`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -406,6 +494,15 @@ export default function HatScreen() {
           }
           
           const data = await response.json();
+          
+          // Update cache with new data and current timestamp
+          const cacheData = {
+            data,
+            timestamp: Date.now()
+          };
+          await AsyncStorage.setItem(cacheKey, JSON.stringify(cacheData));
+          
+          // Update UI
           setLineInfo({
             tripDuration: data.tripDuration,
             lineType: data.lineType,
@@ -413,7 +510,25 @@ export default function HatScreen() {
             loading: false
           });
         } catch (error) {
-          console.error('Error fetching line information:', error);
+          console.error('Error in fetchLineInfo:', error);
+          
+          // Try to use expired cache if available and API fails
+          try {
+            const cachedData = await AsyncStorage.getItem(cacheKey);
+            if (cachedData) {
+              const { data } = JSON.parse(cachedData);
+              setLineInfo({
+                tripDuration: data.tripDuration,
+                lineType: data.lineType,
+                fareInfo: data.fareInfo,
+                loading: false
+              });
+              return;
+            }
+          } catch (cacheError) {
+            console.error('Error reading from cache:', cacheError);
+          }
+          
           setLineInfo(prev => ({
             ...prev,
             loading: false,
@@ -422,7 +537,7 @@ export default function HatScreen() {
         }
       }
     };
-
+    
     fetchLineInfo();
   }, [activeTab, selected]);
 
@@ -802,9 +917,14 @@ export default function HatScreen() {
         visible={modalVisible}
         transparent
         animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalBackground}>
-          <View style={styles.modalContent}>
+        <TouchableOpacity 
+          style={styles.modalBackground} 
+          activeOpacity={1} 
+          onPress={() => setModalVisible(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Hat Duyuruları</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -858,7 +978,7 @@ export default function HatScreen() {
               )}
             </ScrollView>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
     </ScrollView>
   );
