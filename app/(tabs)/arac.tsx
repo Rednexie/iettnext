@@ -197,11 +197,11 @@ const Arac = () => {
           keyboardShouldPersistTaps='handled'
         >
           <View style={styles.searchContainer}>
-            <Text style={styles.title}>Araç Sorgulama</Text>
+            <Text style={[styles.title, { color: '#8a6cf1' }]}>Araç Sorgulama</Text>
             <View style={styles.inputContainer}>
               <TextInput
                 ref={inputRef}
-                style={styles.input}
+                style={[styles.input, { fontFamily: 'Inter_400Regular' }]}
                 value={query}
                 onChangeText={setQuery}
                 placeholder="Plaka veya Kapı Kodu girin..."
@@ -227,6 +227,8 @@ const Arac = () => {
             >
               <Text style={styles.buttonText}>Ara</Text>
             </TouchableOpacity>
+            {/* Added margin below the 'Ara' button */}
+            <View style={{ marginBottom: 16 }} />
             
             {loading && <ActivityIndicator size="large" color="#8a6cf1" style={styles.loader} />}
             {hasQueried && result === null && !loading && <Text style={styles.noData}>Araç verisi bulunamadı.</Text>}

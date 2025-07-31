@@ -724,9 +724,9 @@ export default function HatScreen() {
           <View key={f.code} style={styles.favoriteItem}>
             <TouchableOpacity
               onPress={() => removeFavoriteLine(f.code)}
-              style={styles.favoriteBtn}
+              style={[styles.favoriteBtn, { justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }]}
             >
-              <Ionicons name="star" size={16} color="#6a4cff" style={styles.favoriteIcon} />
+              <Ionicons name="star" size={20} color="#6a4cff" style={[styles.favoriteIcon, { alignSelf: 'center', marginLeft: -10 }]} />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => selectLine({ line: f.code, name: f.name })}

@@ -208,45 +208,46 @@ export default function AiScreen() {
           </View>
         );
       }
-      case 'get_vehicle_info': {
-        const info: any = m.data;
-        const rows: [string, any][] = [
-          ['Kapı Kodu', info.KapıKodu],
-          ['Plaka', info.plaka],
-          ['Model', info.marka || info.arac_modeli],
-          ['Hat', info.hat || info.route],
-          ['Konum', info.konum || info.location],
-          ['Özellikler', info['özellikler'] || info.features],
-          ['Kapasite', info.kapasite || info.capacity],
-          ['Operatör', info.operator || info.isletmeci],
-          ['Hız', info.hiz + ' km/s'],
-        ];
-
-        if(info.Garaj) rows.push(['Garaj', info.Garaj]);
-        
+      case 'get_vehicles': {
+        const vehicles = Array.isArray(m.data) ? m.data : [];
         return (
-          <ScrollView nestedScrollEnabled style={styles.timeSectionsContainer} contentContainerStyle={{ paddingVertical: 8 }}>
-            <View style={styles.tableContainer}>
-              {rows.map(([label, value], idx) => (
-                <View key={idx} style={styles.tableRow}>
-                  <Text style={styles.tableHeaderCell}>{decodeEntities(label)}</Text>
-                  <View style={styles.tableCellContainer}>
-                    {label === 'Konum' && info.tamkonum ? (
-                      <TouchableOpacity onPress={() => Linking.openURL(
-                        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(info.tamkonum)}`
-                      )}>
-                        <Text style={[styles.tableCell, { color: '#8a6cf1', textDecorationLine: 'underline' }]}>
-                          {decodeEntities(value?.toString() ?? '-')}
-                        </Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <Text style={styles.tableCell}>{decodeEntities(value?.toString() ?? '-')}</Text>
+          <View style={styles.vehiclesContainer}>
+            {vehicles.map((vehicle: any, index: number) => {
+              const hasLocation = vehicle.lat && vehicle.lon;
+              const locationText = vehicle.locationName || 
+                (hasLocation ? `${vehicle.lat.toFixed(6)}, ${vehicle.lon.toFixed(6)}` : 'Konum bilgisi yok');
+              
+              return (
+                <TouchableOpacity 
+                  key={index} 
+                  style={styles.vehicleCard}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    if (hasLocation) {
+                      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${vehicle.lat},${vehicle.lon}`);
+                    }
+                  }}
+                >
+                  <View style={styles.vehicleHeader}>
+                    <Text style={styles.vehicleCode}>{vehicle.vehicleDoorCode || 'Bilinmeyen'}</Text>
+                    {vehicle.direction && (
+                      <Text style={styles.vehicleDirection}>{vehicle.direction}</Text>
                     )}
                   </View>
-                </View>
-              ))}
-            </View>
-          </ScrollView>
+                  <View style={styles.vehicleLocation}>
+                    <Text style={styles.locationText} numberOfLines={1} ellipsizeMode="tail">
+                      {locationText}
+                    </Text>
+                  </View>
+                  {hasLocation && (
+                    <Text style={styles.vehicleCoordinates}>
+                      {vehicle.lat.toFixed(6)}, {vehicle.lon.toFixed(6)}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         );
       }
       default:
@@ -312,6 +313,62 @@ const styles = StyleSheet.create({
     backgroundColor: '#0d0d1a',
     justifyContent: 'space-between',
   },
+  vehiclesContainer: {
+    width: '100%',
+    marginVertical: 8,
+  },
+  vehicleCard: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: 8,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(138, 108, 241, 0.2)',
+    overflow: 'hidden',
+  },
+  vehicleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 8,
+  },
+  vehicleCode: {
+    color: '#e0e0e0',
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    flexShrink: 1,
+    marginRight: 8,
+  },
+  vehicleDirection: {
+    color: '#8a6cf1',
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+    backgroundColor: 'rgba(138, 108, 241, 0.1)', 
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    overflow: 'hidden',
+    flexShrink: 0,
+    maxWidth: '60%',
+    textAlign: 'right',
+  },
+  vehicleLocation: {
+    marginVertical: 4,
+    marginTop: 8,
+  },
+  locationText: {
+    color: '#8a6cf1',
+    fontSize: 15,
+    fontFamily: 'Inter_500Medium',
+    lineHeight: 20,
+  },
+  vehicleCoordinates: {
+    color: '#888',
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    marginTop: 4,
+  },
   messagesContainer: { 
     flex: 1,
     padding: 16,
@@ -319,10 +376,28 @@ const styles = StyleSheet.create({
   },
   messagesContent: { paddingBottom: 16, flexGrow: 1, justifyContent: 'flex-end' },
   intro: { color: '#ccc', fontFamily: 'Inter_400Regular', textAlign: 'center', marginVertical: 20 },
-  messageBubble: { maxWidth: '80%', padding: 12, borderRadius: 12, marginVertical: 4 },
+  messageBubble: { 
+    maxWidth: '80%', 
+    padding: 12, 
+    borderRadius: 12, 
+    marginVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(138, 108, 241, 0.1)',
+  },
   wideBubble: { maxWidth: '95%', width: '95%' },
-  userBubble: { backgroundColor: '#6a4cff', alignSelf: 'flex-end' },
-  assistantBubble: { backgroundColor: '#1a1a2e', borderWidth: 1, borderColor: 'rgba(138,108,241,0.3)', alignSelf: 'flex-start' },
+  userBubble: { 
+    backgroundColor: '#6a4cff', 
+    alignSelf: 'flex-end',
+    marginRight: 4,
+    borderWidth: 0,
+  },
+  assistantBubble: { 
+    backgroundColor: '#1a1a2e', 
+    borderWidth: 1, 
+    borderColor: 'rgba(138,108,241,0.3)', 
+    alignSelf: 'flex-start',
+    marginLeft: 4,
+  },
   messageText: { fontSize: 16 },
   userText: { color: '#fff', fontFamily: 'Inter_500Medium' },
   assistantText: { color: '#e0e0e0', fontFamily: 'Inter_400Regular' },
