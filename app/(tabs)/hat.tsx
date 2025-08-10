@@ -2,7 +2,7 @@ import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, us
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Dimensions, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 // Helper component for dynamic font size
 import type { TextStyle } from 'react-native';
@@ -326,6 +326,18 @@ export default function HatScreen() {
     error?: string;
   }>({ loading: false });
   const isFavoriteLine = selected ? favoriteLines.some(f => f.code === selected.line) : false;
+
+  const params = useLocalSearchParams();
+  useEffect(() => {
+    const lineParam = params.line as string | undefined;
+    if (lineParam && typeof lineParam === 'string') {
+      const code = lineParam.trim().toUpperCase();
+      if (!code) return;
+      setQuery(code);
+      // trigger selection
+      selectLine({ line: code, name: code });
+    }
+  }, [params.line]);
 
   // Dynamic font size for line name
   const lineNameText = selected ? decodeHTMLEntities(selected.name) : '';

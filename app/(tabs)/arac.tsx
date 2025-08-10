@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
+import { router } from 'expo-router';
 
 const API_BASE = 'https://iett.rednexie.workers.dev';
 
@@ -377,11 +378,15 @@ const Arac = () => {
                 <View style={styles.tasksContainer}>
                   <Text style={styles.sectionTitle}>Bugünkü Seferler</Text>
                   {tasks.map((task, i) => (
-                    <View key={i} style={styles.taskItem}>
+                    <TouchableOpacity key={i} style={styles.taskItem} onPress={() => {
+                      const code = (task.code || '').toString().trim();
+                      if (!code) return;
+                      router.push({ pathname: '/hat', params: { line: code } });
+                    }}>
                       <Text style={styles.taskTime}>{task.time ? `${task.time}` : 'Saat bilgisi yok'}</Text>
                       <Text style={styles.taskName}>{task.name}</Text>
                       <Text style={styles.taskCode}>{task.code}</Text>
-                    </View>
+                    </TouchableOpacity>
                   ))}
                 </View>
               )}
