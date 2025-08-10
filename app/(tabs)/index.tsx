@@ -32,6 +32,15 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Traffic state
+  const [trafficExpanded, setTrafficExpanded] = useState(false);
+  const [trafficLoading, setTrafficLoading] = useState(false);
+  const [trafficError, setTrafficError] = useState<string | null>(null);
+  const [trafficOverall, setTrafficOverall] = useState<number | null>(null);
+  const [trafficAv, setTrafficAv] = useState<number | null>(null);
+  const [trafficAn, setTrafficAn] = useState<number | null>(null);
+  const [trafficFetched, setTrafficFetched] = useState(false);
   
   // Configure layout animation for smooth expand/collapse
   const toggleExpand = () => {
@@ -47,6 +56,56 @@ export default function HomeScreen() {
       },
     });
     setIsExpanded(!isExpanded);
+  };
+
+  const toggleTraffic = async () => {
+    LayoutAnimation.configureNext({
+      duration: 200,
+      update: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+      create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+    });
+    const next = !trafficExpanded;
+    setTrafficExpanded(next);
+    if (next && !trafficFetched) {
+      await fetchTraffic();
+    }
+  };
+
+  const clampPct = (v: any): number => {
+    const n = Math.round(Number(v ?? 0));
+    if (!isFinite(n)) return 0;
+    return Math.max(0, Math.min(100, n));
+  };
+
+  const getTrafficColor = (v: number): string => {
+    if (v <= 25) return '#2ecc71';
+    if (v <= 50) return '#f1c40f';
+    if (v <= 75) return '#e67e22';
+    return '#e74c3c';
+  };
+
+  const fetchTraffic = async () => {
+    try {
+      setTrafficLoading(true);
+      setTrafficError(null);
+      const res = await fetch('https://tkmservices.ibb.gov.tr/web/api/TrafficData/v1/TrafficIndex_Sc1_Cont', {
+        method: 'GET',
+        headers: { accept: 'application/json' },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const overall = clampPct(data?.TI);
+      const av = clampPct(data?.TI_Av);
+      const an = clampPct(data?.TI_An);
+      setTrafficOverall(overall);
+      setTrafficAv(av);
+      setTrafficAn(an);
+      setTrafficFetched(true);
+    } catch (e: any) {
+      setTrafficError('Trafik bilgisi alınamadı.');
+    } finally {
+      setTrafficLoading(false);
+    }
   };
 
   // Debug flag to always trigger update prompt
@@ -133,7 +192,65 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <Text style={styles.headerText}>iettnext</Text>
       </View>
-      
+
+      {/* Traffic Card */}
+      <View style={styles.announcementCard}>
+        <TouchableOpacity 
+          style={styles.announcementHeader}
+          onPress={toggleTraffic}
+          activeOpacity={0.8}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons 
+              name="speedometer" 
+              size={20} 
+              color="#8a6cf1" 
+              style={{ marginRight: 8 }}
+            />
+            <Text style={styles.announcementTitle}>Trafik Yoğunluğu</Text>
+          </View>
+          <Text style={styles.announcementCount}>
+            {trafficOverall != null ? `${trafficOverall}%` : '—'}
+          </Text>
+        </TouchableOpacity>
+
+        {trafficExpanded && (
+          <Animated.View style={styles.announcementsList}>
+            {trafficLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#8a6cf1" />
+                <Text style={styles.loadingText}>Yükleniyor...</Text>
+              </View>
+            ) : trafficError ? (
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={20} color="#ff6b6b" />
+                <Text style={styles.errorText}>{trafficError}</Text>
+              </View>
+            ) : (
+              <View>
+                {/* Avrupa */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                  <Text style={styles.announcementItemMessage}>Avrupa</Text>
+                  <Text style={styles.announcementCount}>{trafficAv != null ? `${trafficAv}%` : '—'}</Text>
+                </View>
+                <View style={{ height: 14, borderRadius: 9999, backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden', marginTop: 6 }}>
+                  <View style={{ height: '100%', width: `${trafficAv ?? 0}%`, backgroundColor: getTrafficColor(trafficAv ?? 0) }} />
+                </View>
+
+                {/* Anadolu */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+                  <Text style={styles.announcementItemMessage}>Anadolu</Text>
+                  <Text style={styles.announcementCount}>{trafficAn != null ? `${trafficAn}%` : '—'}</Text>
+                </View>
+                <View style={{ height: 14, borderRadius: 9999, backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden', marginTop: 6 }}>
+                  <View style={{ height: '100%', width: `${trafficAn ?? 0}%`, backgroundColor: getTrafficColor(trafficAn ?? 0) }} />
+                </View>
+              </View>
+            )}
+          </Animated.View>
+        )}
+      </View>
+
       {/* Announcements Section */}
       <View style={styles.announcementCard}>
         <TouchableOpacity 
@@ -176,20 +293,24 @@ export default function HomeScreen() {
               </View>
             ) : announcements.length > 0 ? (
               announcements.map((announcement) => (
-                <TouchableOpacity 
+                <View 
                   key={announcement.id} 
                   style={styles.announcementItem}
-                  onPress={() => Linking.openURL(announcement.url)}
-                  activeOpacity={0.7}
                 >
-                  <Text style={styles.announcementItemTitle}>{announcement.title}</Text>
-                  <Text style={styles.announcementItemDate}>
-                    {(announcement.startDate)}
+                  <Text 
+                    style={styles.announcementItemTitle}
+                    onPress={() => Linking.openURL(announcement.url)}
+                    accessibilityRole="link"
+                  >
+                    {announcement.title}
                   </Text>
-                  <Text style={styles.announcementItemMessage}>
+                  <Text style={styles.announcementItemDate} selectable>
+                    {announcement.startDate}
+                  </Text>
+                  <Text style={styles.announcementItemMessage} selectable>
                     {announcement.description}
                   </Text>
-                </TouchableOpacity>
+                </View>
               ))
             ) : (
               <View style={styles.noAnnouncementsContainer}>

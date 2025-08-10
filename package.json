@@ -10,6 +10,7 @@
     "web": "expo start --web",
     "lint": "expo lint"
   },
+  "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
     "@expo-google-fonts/inter": "^0.3.0",
     "@expo/vector-icons": "^14.1.0",
