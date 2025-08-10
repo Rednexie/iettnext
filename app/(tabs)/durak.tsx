@@ -2,6 +2,7 @@ import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, us
 import { FontAwesome5, Ionicons } from '@expo/vector-icons'; // Import Ionicons for clear button
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
+import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react'; // Added useEffect
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -45,6 +46,28 @@ const decodeHTMLEntities = (text: string): string => {
     .replace(/&#x([\da-f]+);/gi, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
     // Remove any other HTML tags
     .replace(/<\/?[^>]+(>|$)/g, '');
+};
+
+// New utility function to extract only the stop name
+const extractStopName = (fullText: string): string => {
+  let result = fullText.trim();
+
+  // 1) If it starts with a numeric index like "1.", split by the first dot and take the second part
+  if (/^\d+\./.test(result)) {
+    const parts = result.split('.', 2);
+    if (parts.length > 1) {
+      result = parts[1].trim();
+    }
+  }
+
+  // 2) If it contains a district part like "MİLLET CADDESİ - Pendik",
+  // split using the last occurrence of space-dash-space and take the first part
+  const lastDistrictDash = result.lastIndexOf(' - ');
+  if (lastDistrictDash !== -1) {
+    result = result.substring(0, lastDistrictDash).trim();
+  }
+
+  return result;
 };
 
 function ArrivalCard({ arrival }: { arrival: Arrival }) {
@@ -133,6 +156,7 @@ export default function DurakScreen() {
   const [selectedLines, setSelectedLines] = useState<Set<string>>(new Set());
   const [availableLines, setAvailableLines] = useState<Set<string>>(new Set());
   const isFavoriteStop = selectedStop ? favoriteStops.some(f => f.stopId === selectedStop.DURAK_DURAK_KODU) : false;
+  const [isRateLimited, setIsRateLimited] = useState(false);
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -146,6 +170,37 @@ export default function DurakScreen() {
   // Debounce and cancel previous fetches for suggestions
   const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null); // Changed React.useRef to useRef
   const abortController = useRef<AbortController | null>(null); // Changed React.useRef to useRef
+
+  const localSearchParams = useLocalSearchParams();
+
+  useEffect(() => {
+    const initialQuery = localSearchParams.query;
+    if (typeof initialQuery === 'string' && initialQuery.trim() !== '') {
+      const processedQuery = extractStopName(initialQuery);
+      setQuery(processedQuery);
+      setSelectedStop(null);
+      // Fetch suggestions immediately without auto-selecting
+      (async () => {
+        try {
+          setLoading(true);
+          const response = await fetch(`${API_BASE}/station-suggestions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: processedQuery.trim() }),
+          });
+          const data = await response.json();
+          const filtered = (data || []).filter((s: Suggestion) => s.DURAK_DURAK_KODU >= 0);
+          setSuggestions(filtered);
+        } catch (e) {
+          console.error('Error fetching initial suggestions:', e);
+          setError('Öneriler alınamadı.');
+          setSuggestions([]);
+        } finally {
+          setLoading(false);
+        }
+      })();
+    }
+  }, [localSearchParams.query]);
 
   useEffect(() => {
     (async () => {
@@ -348,214 +403,223 @@ export default function DurakScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
       <ScrollView contentContainerStyle={styles.contentContainer} keyboardShouldPersistTaps="handled" style={styles.container}>
-        <View style={styles.searchContainer}>
-          <Text style={styles.title}>Durak Sorgulama</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              ref={inputRef}
-              style={styles.input}
-              placeholder="Durak adı veya kodu girin"
-              placeholderTextColor="#ccc"
-              value={query}
-              onChangeText={fetchSuggestions}
-              onSubmitEditing={handleSubmitEditing}
-              autoCorrect={false}
-              autoCapitalize="none"
-              returnKeyType="search"
-            />
-            {query.length > 0 && (
-              <TouchableOpacity 
-                style={styles.clearButton} 
-                onPress={() => {
-                  setQuery('');
-                  setSuggestions([]); // Clear suggestions when input is cleared
-                  setSelectedStop(null); // Clear selected stop
-                  setArrivals([]); // Clear arrivals
-                }}
-              >
-                <Ionicons name="close-circle" size={20} color="#6a6a8a" />
-              </TouchableOpacity>
+        <View> {/* Single wrapper View for ScrollView content */}
+          <View style={styles.searchContainer}>
+            <Text style={styles.title}>Durak Sorgulama</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                ref={inputRef}
+                style={styles.input}
+                placeholder="Durak adı veya kodu girin"
+                placeholderTextColor="#ccc"
+                value={query}
+                onChangeText={fetchSuggestions}
+                onSubmitEditing={handleSubmitEditing}
+                autoCorrect={false}
+                autoCapitalize="none"
+                returnKeyType="search"
+              />
+              {query.length > 0 && (
+                <TouchableOpacity 
+                  style={styles.clearButton} 
+                  onPress={() => {
+                    setQuery('');
+                    setSuggestions([]); // Clear suggestions when input is cleared
+                    setSelectedStop(null); // Clear selected stop
+                    setArrivals([]); // Clear arrivals
+                  }}
+                >
+                  <Ionicons name="close-circle" size={20} color="#6a6a8a" />
+                </TouchableOpacity>
+              )}
+            </View>
+              
+            {query.length >= 2 && !selectedStop && (
+              <View style={styles.suggestionsContainer}>
+                {loading ? (
+                  <ActivityIndicator size="small" color="#8a6cf1" style={styles.loader} />
+                ) : suggestions.length > 0 ? (
+                  <ScrollView style={styles.suggestionsScrollView}>
+                    {suggestions.map((item, idx) => (
+                      <TouchableOpacity
+                        key={item.DURAK_DURAK_KODU}
+                        style={styles.suggestionItem}
+                        onPress={() => selectSuggestion(item)}
+                      >
+                        <Text style={styles.lineName}>{decodeHTMLEntities(`${item.DURAK_ADI} (${item.DURAK_YON_BILGISI})`)}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                ) : (
+                  (query.length >= 2 && !loading && !error) ? <Text style={styles.noDataText}>Sonuç bulunamadı</Text> : null
+                )}
+              </View>
             )}
           </View>
-            
-          {query.length >= 2 && !selectedStop && (
-            <View style={styles.suggestionsContainer}>
-              {loading ? (
-                <ActivityIndicator size="small" color="#8a6cf1" style={styles.loader} />
-              ) : suggestions.length > 0 ? (
-                <ScrollView style={styles.suggestionsScrollView}>
-                  {suggestions.map((item, idx) => (
-                    <TouchableOpacity
-                      key={item.DURAK_DURAK_KODU}
-                      style={styles.suggestionItem}
-                      onPress={() => selectSuggestion(item)}
-                    >
-                      <Text style={styles.lineName}>{decodeHTMLEntities(`${item.DURAK_ADI} (${item.DURAK_YON_BILGISI})`)}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              ) : (
-                query.length >= 2 && !loading && <Text style={styles.noDataText}>Sonuç bulunamadı</Text>
+
+          {isRateLimited ? (
+            <Text style={styles.rateLimitMessage}>Hız sınırını aştınız, lütfen sorgulama yapmadan önce biraz bekleyiniz.</Text>
+          ) : (
+            <View>
+              {!selectedStop && query.trim() === '' && favoriteStops.length > 0 && (
+                <View style={styles.favoritesContainer}>
+                  <ScrollView 
+                    style={styles.favoritesScrollView}
+                    showsVerticalScrollIndicator={false}
+                    nestedScrollEnabled
+                  >
+                    {favoriteStops.map(f => (
+                      <View key={f.stopId} style={styles.favoriteItem}>
+                        <TouchableOpacity 
+                          onPress={() => removeFavoriteStop(f.stopId)} 
+                          style={styles.favoriteRemove}
+                        >
+                          <Ionicons name="star" size={16} color="#6a4cff" />
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          onPress={() => selectSuggestion({ 
+                            DURAK_DURAK_KODU: f.stopId, 
+                            DURAK_ADI: f.name, 
+                            DURAK_YON_BILGISI: f.direction 
+                          })} 
+                          style={{ flex: 1 }}
+                        >
+                          <Text style={styles.favoriteName}>
+                            {f.name}{f.direction ? ` (${f.direction})` : ''}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
               )}
+
+              {selectedStop && (
+                <View style={styles.buttonContainer}>
+                  <TouchableOpacity style={styles.actionBtn} onPress={handleRefresh}>
+                    <FontAwesome5 name="sync-alt" size={18} color="#fff" />
+                    <Text style={styles.actionBtnText}>Yenile</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.actionBtn, selectedLines.size > 0 && styles.activeFilterBtn]} 
+                    onPress={() => setFilterModalVisible(true)}
+                  >
+                    <FontAwesome5 name="filter" size={16} color="#fff" />
+                    <Text style={styles.actionBtnText}>{selectedLines.size > 0 ? `${selectedLines.size} Filtre` : 'Filtrele'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.actionBtn} onPress={handleAnnouncementsPress}>
+                    <FontAwesome5 name="bell" size={18} color="#fff" />
+                    <Text style={styles.actionBtnText}>Duyuru</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.actionBtn, styles.smallStarBtn, styles.favoriteBtn]} 
+                    onPress={toggleFavoriteStop}
+                  >
+                    <Ionicons name={isFavoriteStop ? 'star' : 'star-outline'} size={18} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                
+              {loading && !selectedStop && <ActivityIndicator size="large" color="#8a6cf1" style={styles.loader} />}
+                
+              {!loading && arrivals.length === 0 && selectedStop && !error ? (
+                <Text style={styles.noDataText}>Varacak otobüs bulunamadı.</Text>
+              ) : null}
+
+              {!loading && arrivals.filter(arrival => shouldShowArrival(arrival)).map((arrival, idx) => (
+                <ArrivalCard key={idx} arrival={arrival} />
+              ))}
             </View>
           )}
         </View>
+      </ScrollView>
 
-        {!selectedStop && query.trim() === '' && favoriteStops.length > 0 && (
-          <View style={styles.favoritesContainer}>
-            <ScrollView 
-              style={styles.favoritesScrollView}
-              showsVerticalScrollIndicator={false}
-              nestedScrollEnabled
-            >
-              {favoriteStops.map(f => (
-                <View key={f.stopId} style={styles.favoriteItem}>
-                  <TouchableOpacity 
-                    onPress={() => removeFavoriteStop(f.stopId)} 
-                    style={styles.favoriteRemove}
-                  >
-                    <Ionicons name="star" size={16} color="#6a4cff" />
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    onPress={() => selectSuggestion({ 
-                      DURAK_DURAK_KODU: f.stopId, 
-                      DURAK_ADI: f.name, 
-                      DURAK_YON_BILGISI: f.direction 
-                    })} 
-                    style={{ flex: 1 }}
-                  >
-                    <Text style={styles.favoriteName}>
-                      {f.name}{f.direction ? ` (${f.direction})` : ''}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+      {/* Modals outside ScrollView */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalBackground}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Durak Duyuru</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Text style={styles.modalClose}>×</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.announcementList} contentContainerStyle={{ flexGrow: 1 }}>
+              {announcementsLoading ? (
+                <ActivityIndicator size="large" color="#8a6cf1" style={styles.loader} />
+              ) : announcements.length > 0 ? (
+                <>
+                  {announcements.map((announcement, index) => (
+                    <View key={index} style={styles.announcementItem}>
+                      <Text style={styles.announcementLine}>
+                        {announcement.HAT} Hattı
+                      </Text>
+                      <Text style={styles.announcementText}>
+                        {announcement.BILGI}
+                      </Text>
+                    </View>
+                  ))}
+                </>
+              ) : (
+                <Text style={styles.noDataText}>Bu durak için duyuru bulunmamaktadır.</Text>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Filter Modal */}
+      <Modal
+        visible={filterModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFilterModalVisible(false)}
+      >
+        <View style={styles.modalBackground}>
+          <View style={[styles.modalContent, { maxHeight: '80%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Hat Filtreleme</Text>
+              <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
+                <Text style={styles.modalClose}>×</Text>
+              </TouchableOpacity>
+            </View>
+            
+
+
+            <ScrollView style={styles.filterList} contentContainerStyle={styles.filterGrid}>
+              {Array.from(availableLines).sort().map((line, idx) => (
+                <TouchableOpacity
+                  key={line}
+                  style={[
+                    styles.squareFilterItem,
+                    selectedLines.has(line) && styles.selectedFilterItem
+                  ]}
+                  onPress={() => toggleLineFilter(line)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.filterItemText,
+                    selectedLines.has(line) && styles.selectedFilterItemText
+                  ]}>
+                    {line}
+                  </Text>
+                  {selectedLines.has(line) && (
+                    <Ionicons name="checkmark" size={18} color="#8a6cf1" style={{ position: 'absolute', top: 4, right: 4 }} />
+                  )}
+                </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
-        )}
-
-        {selectedStop && (
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.actionBtn} onPress={handleRefresh}>
-              <FontAwesome5 name="sync-alt" size={18} color="#fff" />
-              <Text style={styles.actionBtnText}>Yenile</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.actionBtn, selectedLines.size > 0 && styles.activeFilterBtn]} 
-              onPress={() => setFilterModalVisible(true)}
-            >
-              <FontAwesome5 name="filter" size={16} color="#fff" />
-              <Text style={styles.actionBtnText}>{selectedLines.size > 0 ? `${selectedLines.size} Filtre` : 'Filtrele'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionBtn} onPress={handleAnnouncementsPress}>
-              <FontAwesome5 name="bell" size={18} color="#fff" />
-              <Text style={styles.actionBtnText}>Duyuru</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.actionBtn, styles.smallStarBtn, styles.favoriteBtn]} 
-              onPress={toggleFavoriteStop}
-            >
-              <Ionicons name={isFavoriteStop ? 'star' : 'star-outline'} size={18} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-          
-        {loading && !selectedStop && <ActivityIndicator size="large" color="#8a6cf1" style={styles.loader} />}
-          
-        {!loading && arrivals.length === 0 && selectedStop && !error ? (
-          <Text style={styles.noDataText}>Varacak otobüs bulunamadı.</Text>
-        ) : null}
-
-        <Modal
-          visible={modalVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setModalVisible(false)}
-        >
-          <View style={styles.modalBackground}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Durak Duyuru</Text>
-                <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <Text style={styles.modalClose}>×</Text>
-                </TouchableOpacity>
-              </View>
-              
-              <ScrollView style={styles.announcementList} contentContainerStyle={{ flexGrow: 1 }}>
-                {announcementsLoading ? (
-                  <ActivityIndicator size="large" color="#8a6cf1" style={styles.loader} />
-                ) : announcements.length > 0 ? (
-                  <>
-                    {announcements.map((announcement, index) => (
-                      <View key={index} style={styles.announcementItem}>
-                        <Text style={styles.announcementLine}>
-                          {announcement.HAT} Hattı
-                        </Text>
-                        <Text style={styles.announcementText}>
-                          {announcement.BILGI}
-                        </Text>
-                      </View>
-                    ))}
-                  </>
-                ) : (
-                  <Text style={styles.noDataText}>Bu durak için duyuru bulunmamaktadır.</Text>
-                )}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
-
-        {/* Filter Modal */}
-        <Modal
-          visible={filterModalVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setFilterModalVisible(false)}
-        >
-          <View style={styles.modalBackground}>
-            <View style={[styles.modalContent, { maxHeight: '80%' }]}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Hat Filtreleme</Text>
-                <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
-                  <Text style={styles.modalClose}>×</Text>
-                </TouchableOpacity>
-              </View>
-              
-
-
-              <ScrollView style={styles.filterList} contentContainerStyle={styles.filterGrid}>
-                {Array.from(availableLines).sort().map((line, idx) => (
-                  <TouchableOpacity
-                    key={line}
-                    style={[
-                      styles.squareFilterItem,
-                      selectedLines.has(line) && styles.selectedFilterItem
-                    ]}
-                    onPress={() => toggleLineFilter(line)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[
-                      styles.filterItemText,
-                      selectedLines.has(line) && styles.selectedFilterItemText
-                    ]}>
-                      {line}
-                    </Text>
-                    {selectedLines.has(line) && (
-                      <Ionicons name="checkmark" size={18} color="#8a6cf1" style={{ position: 'absolute', top: 4, right: 4 }} />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
-
-        {!loading && arrivals.filter(arrival => shouldShowArrival(arrival)).map((arrival, idx) => (
-          <ArrivalCard key={idx} arrival={arrival} />
-        ))}
-      </ScrollView>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -661,7 +725,7 @@ const styles = StyleSheet.create({
   },
   filterList: {
     padding: 16,
-    maxHeight: 320,
+    maxHeight: 400,
   },
   filterGrid: {
     flexDirection: 'row',
@@ -876,5 +940,12 @@ const styles = StyleSheet.create({
   favoriteRemove: {
     marginLeft: 8,
     padding: 4,
+  },
+  rateLimitMessage: {
+    color: '#ef4444',
+    fontSize: 14,
+    textAlign: 'center',
+    marginVertical: 16,
+    fontFamily: 'Inter_400Regular',
   },
 });

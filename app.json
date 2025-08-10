@@ -2,7 +2,7 @@
   "expo": {
     "name": "iettnext",
     "slug": "iettnext",
-    "version": "0.0.6",
+    "version": "0.0.7",
     "orientation": "portrait",
     "icon": "./assets/images/iettnext.png",
     "scheme": "iettnext",

@@ -330,7 +330,7 @@ export default function HomeScreen() {
             <Text style={styles.buttonText}>Araçlar</Text>
           </TouchableOpacity>
         </View>
-        {/* Canlı Otobüs Haritası Card */}
+        {/* Canlı Otobüs Haritası Card
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Canlı Otobüs Haritası</Text>
           <Text style={styles.cardDesc}>Otobüslerin anlık konumlarını harita üzerinde görüntüleyin</Text>
@@ -338,6 +338,8 @@ export default function HomeScreen() {
             <Text style={styles.buttonText}>Harita</Text>
           </TouchableOpacity>
         </View>
+        */}
+        
         {/* Durak Sorgulama Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Durak Sorgulama</Text>
@@ -388,7 +390,7 @@ export default function HomeScreen() {
           >
             Rednexie
           </Text>{' '}
-          tarafından geliştirilmiştir
+          tarafından geliştirilmiştir.
           </Text>
       </View>
     </ScrollView>

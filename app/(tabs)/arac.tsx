@@ -50,6 +50,10 @@ const Arac = () => {
       const res = await fetch(`${API_BASE}/query`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [queryType]: q.toUpperCase() }),
       });
+      if (res.status === 429) {
+        setResult({ isRateLimited: true });
+        return;
+      }
       const data = await res.json();
       setResult(data || null);
       setTasks([]);
@@ -262,12 +266,15 @@ const Arac = () => {
                         }
                         
                         setHasQueried(true);
-                        let queryType: string;
+                        let queryType: string | null = null;
                         if (isVehicleDoorCode(q)) {
                           queryType = 'KapıKodu';
                         } else if (isNumberPlate(q)) {
                           queryType = 'plaka';
-                        } else {
+                        }
+                        // Do not proceed with fetch if queryType is not determined
+                        if (!queryType) {
+                          alert('Geçersiz favori formatı.');
                           return;
                         }
                         
@@ -278,6 +285,10 @@ const Arac = () => {
                             headers: { 'Content-Type': 'application/json' }, 
                             body: JSON.stringify({ [queryType]: q.toUpperCase() }),
                           });
+                          if (res.status === 429) {
+                            setResult({ isRateLimited: true });
+                            return;
+                          }
                           const data = await res.json();
                           setResult(data || null);
                           setTasks([]);
@@ -307,74 +318,75 @@ const Arac = () => {
             )}
           </View>
       
-          {result && (
-        <View style={styles.resultContainer}>
-          <View style={styles.resultHeader}>
-            <View style={styles.resultHeaderContent}>
-              <Text style={styles.resultHeaderText}>
-                {result.KapıKodu ? `${result.KapıKodu}${result.plaka ? ` / ${result.plaka}` : ''}` : result.plaka}
-              </Text>
-              <TouchableOpacity 
-                onPress={toggleFavorite}
-                style={styles.favoriteButton}
-              >
-                <Ionicons 
-                  name={isFavorite ? "star" : "star-outline"} 
-                  size={24} 
-                  color={isFavorite ? "#8a6cf1" : "#6a6a8a"} 
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-          
-          <View style={styles.tableContainer}>
-            {(() => {
-              const fields = ['hat', 'marka', 'kapasite', 'özellikler', 'yer', 'konum', 'konumSaati', 'hiz', 'operator'];
-              if (result.Garaj) fields.splice(0, 0, 'Garaj');
-              return fields.map((field) => {
-                let value: any = result[field] || 'N/A';
-                if (field === 'konum' && result.tamkonum) {
-                  const coords = result.tamkonum.split(',').map((s: string) => s.trim());
-                  if (coords.length === 2) {
-                    const lat = Number(coords[0]); const lon = Number(coords[1]);
-                    value = <LocationResolver lat={lat} lon={lon} />;
-                  }
-                }
-                return (
-                  <View key={field} style={styles.tableRow}>
-                    <Text style={styles.tableHeaderCell}>{field}</Text>
-                    <View style={styles.tableCellContainer}>
-                      {(typeof value === 'string' || typeof value === 'number') ? 
-                        <Text style={styles.tableCell}>{value}</Text> : value}
-                    </View>
-                  </View>
-                );
-              });
-            })()}
-          </View>
-          
-          {tasks.length === 0 && (
-            <TouchableOpacity style={styles.tasksButton} onPress={viewTodayTasks}>
-              <Text style={styles.buttonText}>Bugünkü Tüm Seferleri Gör</Text>
-            </TouchableOpacity>
-          )}
-          
-          {tasksLoading && <ActivityIndicator size="small" color="#8a6cf1" style={styles.loader} />}
-          
-          {tasks.length > 0 && (
-            <View style={styles.tasksContainer}>
-              <Text style={styles.sectionTitle}>Bugünkü Seferler</Text>
-              {tasks.map((task, i) => (
-                <View key={i} style={styles.taskItem}>
-                  <Text style={styles.taskTime}>{task.time ? `${task.time}` : 'Saat bilgisi yok'}</Text>
-                  <Text style={styles.taskName}>{task.name}</Text>
-                  <Text style={styles.taskCode}>{task.code}</Text>
+          {result && result.isRateLimited ? (
+            <Text style={styles.rateLimitMessage}>Hız sınırını aştınız, lütfen sorgulama yapmadan önce biraz bekleyiniz.</Text>
+          ) : result && (
+            <View style={styles.resultContainer}>
+              <View style={styles.resultHeader}>
+                <View style={styles.resultHeaderContent}>
+                  <Text style={styles.resultHeaderText}>
+                    {result.KapıKodu ? `${result.KapıKodu}${result.plaka ? ` / ${result.plaka}` : ''}` : result.plaka}
+                  </Text>
+                  <TouchableOpacity 
+                    onPress={toggleFavorite}
+                    style={styles.favoriteButton}
+                  >
+                    <Ionicons 
+                      name={isFavorite ? "star" : "star-outline"} 
+                      size={24} 
+                      color={isFavorite ? "#8a6cf1" : "#6a6a8a"} 
+                    />
+                  </TouchableOpacity>
                 </View>
-              ))}
+              </View>
+              
+              <View style={styles.tableContainer}>
+                {(() => {
+                  const fields = ['hat', 'marka', 'kapasite', 'özellikler', 'yer', 'konum', 'konumSaati', 'hiz', 'operator'];
+                  if (result.Garaj) fields.splice(0, 0, 'Garaj');
+                  return fields.map((field) => {
+                    let value: any = result[field] || 'N/A';
+                    if (field === 'konum' && result.tamkonum) {
+                      const coords = result.tamkonum.split(',').map((s: string) => s.trim());
+                      if (coords.length === 2) {
+                        const lat = Number(coords[0]); const lon = Number(coords[1]);
+                        value = <LocationResolver lat={lat} lon={lon} />;}
+                    }
+                    return (
+                      <View key={field} style={styles.tableRow}>
+                        <Text style={styles.tableHeaderCell}>{field}</Text>
+                        <View style={styles.tableCellContainer}>
+                          {(typeof value === 'string' || typeof value === 'number') ? 
+                            <Text style={styles.tableCell}>{value}</Text> : value}
+                        </View>
+                      </View>
+                    );
+                  });
+                })()}
+              </View>
+              
+              {tasks.length === 0 && (
+                <TouchableOpacity style={styles.tasksButton} onPress={viewTodayTasks}>
+                  <Text style={styles.buttonText}>Bugünkü Tüm Seferleri Gör</Text>
+                </TouchableOpacity>
+              )}
+              
+              {tasksLoading && <ActivityIndicator size="small" color="#8a6cf1" style={styles.loader} />}
+              
+              {tasks.length > 0 && (
+                <View style={styles.tasksContainer}>
+                  <Text style={styles.sectionTitle}>Bugünkü Seferler</Text>
+                  {tasks.map((task, i) => (
+                    <View key={i} style={styles.taskItem}>
+                      <Text style={styles.taskTime}>{task.time ? `${task.time}` : 'Saat bilgisi yok'}</Text>
+                      <Text style={styles.taskName}>{task.name}</Text>
+                      <Text style={styles.taskCode}>{task.code}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
           )}
-        </View>
-      )}
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -616,6 +628,13 @@ const styles = StyleSheet.create({
     color: '#aaa',
     fontSize: 12,
     fontFamily: 'Inter_400Regular',
+  },
+  rateLimitMessage: {
+    color: '#ff6b6b',
+    textAlign: 'center',
+    marginVertical: 12,
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
   },
 });
 

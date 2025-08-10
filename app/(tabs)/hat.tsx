@@ -2,6 +2,7 @@ import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, us
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Dimensions, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { router } from 'expo-router';
 
 // Helper component for dynamic font size
 import type { TextStyle } from 'react-native';
@@ -852,7 +853,9 @@ export default function HatScreen() {
       {stations.map((station, index) => (
         <View key={index} style={styles.stationItem}>
           <View style={styles.stationDot} />
-          <Text style={styles.stationName}>{decodeHTMLEntities(station)}</Text>
+          <TouchableOpacity onPress={() => router.push({ pathname: '/durak', params: { query: decodeHTMLEntities(station) } })}> 
+              <Text style={styles.stationName}>{decodeHTMLEntities(station)}</Text>
+          </TouchableOpacity>
         </View>
       ))}
     </View>
@@ -1262,6 +1265,8 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   modalClose: {
+    fontSize: 24,
+    color: '#ffffff',
   },
   announcementItemWarning: {
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
