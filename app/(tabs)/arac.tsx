@@ -156,12 +156,13 @@ const Arac = () => {
   const LocationResolver = ({ lat, lon }: { lat: number; lon: number }) => {
     const [location, setLocation] = useState<string>('Yükleniyor');
     useEffect(() => {
-      const cacheKey = `l=${lat},${lon}`;
+      const cacheKey = `ll=${lat},${lon}`;
       (async () => {
         try {
-          const cached = await AsyncStorage.getItem(cacheKey);
-          if (cached) {
-            setLocation(cached);
+          const raw = await AsyncStorage.getItem('locationCache');
+          const cache = raw ? JSON.parse(raw) : {};
+          if (cache[cacheKey]) {
+            setLocation(cache[cacheKey]);
           } else {
             const res = await fetch(`${API_BASE}/location-transform`, {
               method: 'POST',
@@ -170,7 +171,8 @@ const Arac = () => {
             });
             const text = await res.text();
             setLocation(text);
-            await AsyncStorage.setItem(cacheKey, text);
+            cache[cacheKey] = text;
+            await AsyncStorage.setItem('locationCache', JSON.stringify(cache));
           }
         } catch {
           setLocation('Konum Bilinmiyor');

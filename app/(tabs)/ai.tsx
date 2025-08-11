@@ -20,7 +20,12 @@ function generateUUID() {
 }
 
 export default function AiScreen() {
-  const [fontsLoaded] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold });
+  const [fontsLoaded] = useFonts({
+    'Inter_400Regular': Inter_400Regular,
+    'Inter_500Medium': Inter_500Medium,
+    'Inter_600SemiBold': Inter_600SemiBold,
+    'Inter_700Bold': Inter_700Bold
+  });
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -96,7 +101,6 @@ export default function AiScreen() {
       });
       
       const data = await response.json();
-      console.log(data);
 
       const assistantMessage: Message = { sender: 'model', text: data.content, tool: data.tool, data: data.data };
       setMessages([...newMessages, assistantMessage]);
@@ -208,6 +212,106 @@ export default function AiScreen() {
           </View>
         );
       }
+      case 'get_vehicle_info': {
+        const vehicle = m.data;
+        if (!vehicle) return <Text style={[styles.messageText, styles.assistantText]}>Araç bilgisi bulunamadı.</Text>;
+        
+        // Parse coordinates from tamkonum if available
+        let lat: number | null = null;
+        let lon: number | null = null;
+        let locationText = vehicle.yer || 'Konum bilgisi yok';
+        
+        if (vehicle.tamkonum) {
+          const [parsedLat, parsedLon] = vehicle.tamkonum.split(',').map(Number);
+          if (!isNaN(parsedLat) && !isNaN(parsedLon)) {
+            lat = parsedLat;
+            lon = parsedLon;
+          }
+        }
+        
+        const hasLocation = !!(lat && lon);
+        
+        return (
+          <View style={styles.vehicleInfoContainer}>
+            <View style={styles.vehicleInfoHeader}>
+              <Text style={styles.vehicleInfoTitle}>Araç Bilgileri</Text>
+            </View>
+            
+            <View style={styles.vehicleInfoSection}>
+              <View style={styles.vehicleInfoRow}>
+                <Text style={styles.vehicleInfoLabel}>Kapı Kodu:</Text>
+                <Text style={styles.vehicleInfoValue}>{vehicle.KapıKodu || 'Bilinmiyor'}</Text>
+              </View>
+              
+              <View style={styles.vehicleInfoRow}>
+                <Text style={styles.vehicleInfoLabel}>Plaka:</Text>
+                <Text style={styles.vehicleInfoValue}>{vehicle.plaka || 'Bilinmiyor'}</Text>
+              </View>
+              
+              <View style={styles.vehicleInfoRow}>
+                <Text style={styles.vehicleInfoLabel}>Model:</Text>
+                <Text style={styles.vehicleInfoValue}>{vehicle.marka || 'Bilinmiyor'}</Text>
+              </View>
+              
+              <View style={styles.vehicleInfoRow}>
+                <Text style={styles.vehicleInfoLabel}>Hat:</Text>
+                <Text style={[styles.vehicleInfoValue, {color: '#ffffff'}]}>{vehicle.hat || 'Bilinmiyor'}</Text>
+              </View>
+              
+              {vehicle.özellikler && (
+                <View style={styles.vehicleInfoRow}>
+                  <Text style={styles.vehicleInfoLabel}>Özellikler:</Text>
+                  <Text style={styles.vehicleInfoValue}>{vehicle.özellikler}</Text>
+                </View>
+              )}
+              
+              <View style={styles.vehicleInfoRow}>
+                <Text style={styles.vehicleInfoLabel}>Kapasite:</Text>
+                <Text style={styles.vehicleInfoValue}>{vehicle.kapasite || 'Bilinmiyor'}</Text>
+              </View>
+              
+              <View style={styles.vehicleInfoRow}>
+                <Text style={styles.vehicleInfoLabel}>Operatör:</Text>
+                <Text style={styles.vehicleInfoValue}>{vehicle.operator || 'Bilinmiyor'}</Text>
+              </View>
+              
+              <View style={styles.vehicleInfoRow}>
+                <Text style={styles.vehicleInfoLabel}>Konum:</Text>
+                <TouchableOpacity 
+                  onPress={() => {
+                    if (hasLocation) {
+                      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lon}`);
+                    }
+                  }}
+                >
+                  <Text style={[styles.vehicleInfoValue, hasLocation ? styles.locationLink : {}]}>
+                    {locationText}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.vehicleInfoRow}>
+                <Text style={styles.vehicleInfoLabel}>Hız:</Text>
+                <Text style={styles.vehicleInfoValue}>{vehicle.hiz ? `${vehicle.hiz} km/s` : 'Bilinmiyor'}</Text>
+              </View>
+              
+              {vehicle.konumSaati && (
+                <View style={styles.vehicleInfoRow}>
+                  <Text style={styles.vehicleInfoLabel}>Konum Zamanı:</Text>
+                  <Text style={styles.vehicleInfoValue}>{vehicle.konumSaati}</Text>
+                </View>
+              )}
+              
+              {hasLocation && lat !== null && lon !== null && (
+                <Text style={styles.coordinatesText}>
+                  {lat.toFixed(6)}, {lon.toFixed(6)}
+                </Text>
+              )}
+            </View>
+          </View>
+        );
+      }
+      
       case 'get_vehicles': {
         const vehicles = Array.isArray(m.data) ? m.data : [];
         return (
@@ -368,6 +472,61 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter_400Regular',
     marginTop: 4,
+  },
+  vehicleInfoContainer: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(138, 108, 241, 0.2)',
+    overflow: 'hidden',
+    width: '100%',
+  },
+  vehicleInfoHeader: {
+    backgroundColor: 'rgba(138, 108, 241, 0.1)',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(138, 108, 241, 0.1)',
+  },
+  vehicleInfoTitle: {
+    color: '#8a6cf1',
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  vehicleInfoSection: {
+    padding: 12,
+  },
+  vehicleInfoRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+    alignItems: 'flex-start',
+  },
+  vehicleInfoLabel: {
+    color: '#8a6cf1',
+    width: 90,
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+    marginRight: 8,
+  },
+  vehicleInfoValue: {
+    flex: 1,
+    color: '#e0e0e0',
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+  },
+  highlight: {
+    color: '#8a6cf1',
+    fontWeight: '500',
+  },
+  locationLink: {
+    color: '#8a6cf1',
+    textDecorationLine: 'underline',
+  },
+  coordinatesText: {
+    color: '#888',
+    fontSize: 11,
+    fontFamily: 'Inter_400Regular',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
   messagesContainer: { 
     flex: 1,

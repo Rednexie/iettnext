@@ -116,6 +116,7 @@ interface Vehicle {
   lon?: number;
   locationResolved?: boolean;
   locationName?: string;
+  guzergah: string,
 }
 
 const VehiclesByDirection = ({ line }: { line: string }) => {
@@ -172,7 +173,8 @@ const VehiclesByDirection = ({ line }: { line: string }) => {
     
     try {
       // Check cache first
-      const raw = await AsyncStorage.getItem('locationCache');
+      const cacheName = localStorage.getItem('useBetaLocationTransform') === 'true' ? 'locationCacheBeta' : 'locationCache';
+      const raw = await AsyncStorage.getItem(cacheName);
       const cache: Record<string, string> = raw ? JSON.parse(raw) : {};
       
       if (cache[key]) {
@@ -187,12 +189,15 @@ const VehiclesByDirection = ({ line }: { line: string }) => {
       }
       
       // If not in cache, fetch from API
-      const response = await fetch(`${API_BASE}/location-transform`, {
+      const url = localStorage.getItem('useBetaLocationTransform') === 'true' ? '/location-transform-new' : '/location-transform';
+
+      const response = await fetch(`${API_BASE}${url}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           lon: vehicle.lon, 
-          lat: vehicle.lat 
+          lat: vehicle.lat,
+          hatCode: vehicle.guzergah,
         }),
       });
       
@@ -200,7 +205,7 @@ const VehiclesByDirection = ({ line }: { line: string }) => {
       if (locationText) {
         // Update cache
         cache[key] = locationText;
-        await AsyncStorage.setItem('locationCache', JSON.stringify(cache));
+        await AsyncStorage.setItem(cacheName, JSON.stringify(cache));
         
         // Update UI
         setVehicles(prevVehicles => 
@@ -369,7 +374,7 @@ export default function HatScreen() {
       return;
     }
 
-    const cacheKey = `${lineCode}`;
+    const cacheKey = `h=${lineCode}`;
     const now = Date.now();
 
     // Check in-memory cache first

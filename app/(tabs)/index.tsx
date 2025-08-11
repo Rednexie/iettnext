@@ -7,6 +7,33 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, LayoutAnimation, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import localVersionData from '../../assets/version.json';
 
+// Decode HTML entities (including numeric Turkish codes) similar to public index.html
+function decodeEntities(input: any): string {
+  if (typeof input !== 'string') return '';
+  // Quick replacements for common numeric codes if any survived double-encoding
+  const quickMap: Array<[RegExp, string]> = [
+    [/&#351;/g, 'ş'], [/&#350;/g, 'Ş'],
+    [/&#287;/g, 'ğ'], [/&#286;/g, 'Ğ'],
+    [/&#305;/g, 'ı'], [/&#304;/g, 'İ'],
+    [/&#231;/g, 'ç'], [/&#199;/g, 'Ç'],
+    [/&#246;/g, 'ö'], [/&#214;/g, 'Ö'],
+    [/&#252;/g, 'ü'], [/&#220;/g, 'Ü'],
+  ];
+  let text = input;
+  quickMap.forEach(([re, ch]) => { text = text.replace(re, ch); });
+  // Decode numeric decimal and hex entities
+  text = text
+    .replace(/&#(\d+);/g, (_m, dec: string) => {
+      const code = parseInt(dec, 10);
+      return isFinite(code) ? String.fromCharCode(code) : _m;
+    })
+    .replace(/&#x([\da-fA-F]+);/g, (_m, hex: string) => {
+      const code = parseInt(hex, 16);
+      return isFinite(code) ? String.fromCharCode(code) : _m;
+    });
+  return text;
+}
+
 
 
 const API_BASE = 'https://iett.rednexie.workers.dev';
@@ -302,13 +329,13 @@ export default function HomeScreen() {
                     onPress={() => Linking.openURL(announcement.url)}
                     accessibilityRole="link"
                   >
-                    {announcement.title}
+                    {decodeEntities(announcement.title)}
                   </Text>
                   <Text style={styles.announcementItemDate} selectable>
                     {announcement.startDate}
                   </Text>
                   <Text style={styles.announcementItemMessage} selectable>
-                    {announcement.description}
+                    {decodeEntities(announcement.description)}
                   </Text>
                 </View>
               ))

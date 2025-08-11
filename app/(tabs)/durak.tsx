@@ -6,6 +6,8 @@ import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react'; // Added useEffect
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+const API_BASE = "https://iett.rednexie.workers.dev"
+
 interface Suggestion {
   DURAK_DURAK_KODU: number;
   DURAK_ADI: string;
@@ -14,7 +16,7 @@ interface Suggestion {
 
 interface Arrival {
   hatkodu: string;
-  depar?: boolean;
+  guzergah?: string;
   saat: string;
   dakika: number;
   son_hiz: number;
@@ -78,29 +80,32 @@ function ArrivalCard({ arrival }: { arrival: Arrival }) {
     lon = parseFloat(lonStr);
     lat = parseFloat(latStr);
   }
+  const guzergah = arrival.guzergah
   const [location, setLocation] = useState('Yükleniyor'); // Changed React.useState to useState
-  useEffect(() => { // Changed React.useEffect to useEffect
+  useEffect(() => {
     let cancelled = false;
     async function fetchLocation() {
       if (lon !== null && lat !== null && !isNaN(lon) && !isNaN(lat)) {
-        const key = `${lon},${lat}`;
-        const raw = await AsyncStorage.getItem('locationCache');
+        const cacheKey = `${lon},${lat}`;
+        const cacheName = await AsyncStorage.getItem('useBetaLocationTransform') === 'true' ? 'locationCacheBeta' : 'locationCache';
+        const raw = await AsyncStorage.getItem(cacheName);
         const cache: Record<string, string> = raw ? JSON.parse(raw) : {};
-        if (cache[key]) {
-          if (!cancelled) setLocation(cache[key]);
+        if (cache[cacheKey]) {
+          if (!cancelled) setLocation(cache[cacheKey]);
           return;
         }
         try {
-          const response = await fetch('https://iett.rednexie.workers.dev/location-transform', {
+          const url = (await AsyncStorage.getItem('useBetaLocationTransform') === 'true' ? '/location-transform-new' : '/location-transform')
+          const response = await fetch(API_BASE + url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lon, lat }),
+            body: JSON.stringify({ lon, lat, hatCode: guzergah }),
           });
           const locText = await response.text();
           if (!cancelled) {
             setLocation(locText);
-            cache[key] = locText;
-            await AsyncStorage.setItem('locationCache', JSON.stringify(cache));
+            cache[cacheKey] = locText;
+            await AsyncStorage.setItem(cacheName, JSON.stringify(cache));
           }
         } catch {
           if (!cancelled) setLocation('Konum Bilinmiyor');
@@ -109,14 +114,14 @@ function ArrivalCard({ arrival }: { arrival: Arrival }) {
     }
     fetchLocation();
     return () => { cancelled = true; };
-  }, [arrival.son_konum, lon, lat]); // Added lon, lat to dependencies for correctness
+  }, [arrival.son_konum, lon, lat, guzergah]);
 
   const canShowMapLink = lon !== null && lat !== null && !isNaN(lon) && !isNaN(lat);
 
   return (
     <View style={styles.resultContainer}>
       <Text style={[styles.resultHeaderText, { color: '#8a6cf1' }]}>
-        {arrival.hatkodu}{arrival.depar ? '-' : ''}
+        {arrival.hatkodu}{arrival.guzergah?.endsWith('D0') ? '' : '-'}
         <Text style={[styles.resultHeaderText, { color: '#8a6cf1' }]}> ⇒ {arrival.saat} ({arrival.dakika} dk) {arrival.son_hiz} km/sa</Text>
       </Text>
       <Text style={styles.resultHeaderText}>{arrival.hatadi}</Text>
