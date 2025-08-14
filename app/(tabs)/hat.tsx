@@ -94,7 +94,9 @@ interface DepartureTable {
   schedule: Record<'I' | 'C' | 'P', DepartureTime[]>;
 };
 
-// const API_BASE = 'http://192.168.1.4:3000'
+// const API_BASE = "http://192.168.1.110:3000"
+
+
 const API_BASE = 'https://iett.rednexie.workers.dev'
 const { width } = Dimensions.get('window');
 
@@ -136,12 +138,13 @@ const VehiclesByDirection = ({ line }: { line: string }) => {
       .then(res => res.json())
       .then(data => {
         if (isMounted) {
-          // Initialize vehicles with locationResolved flag
+          // Initialize vehicles with locationResolved flag and ensure guzergah has a default value
           const vehiclesWithLocationStatus = (data.vehicles || []).map((v: Vehicle) => ({
             ...v,
+            
             locationResolved: false
           }));
-          setVehicles(vehiclesWithLocationStatus);
+          setVehicles(vehiclesWithLocationStatus); 
           
           // Resolve locations after a short delay to show loading state
           setTimeout(() => {
@@ -173,12 +176,13 @@ const VehiclesByDirection = ({ line }: { line: string }) => {
     
     try {
       // Check cache first
-      const cacheName = localStorage.getItem('useBetaLocationTransform') === 'true' ? 'locationCacheBeta' : 'locationCache';
+      const cacheName = await AsyncStorage.getItem('useBetaLocationTransform') === 'true' ? 'locationCacheBeta' : 'locationCache';
       const raw = await AsyncStorage.getItem(cacheName);
       const cache: Record<string, string> = raw ? JSON.parse(raw) : {};
       
       if (cache[key]) {
         setVehicles(prevVehicles => 
+          
           prevVehicles.map(v => 
             v.vehicleDoorCode === vehicle.vehicleDoorCode 
               ? { ...v, locationName: cache[key] }
@@ -189,7 +193,7 @@ const VehiclesByDirection = ({ line }: { line: string }) => {
       }
       
       // If not in cache, fetch from API
-      const url = localStorage.getItem('useBetaLocationTransform') === 'true' ? '/location-transform-new' : '/location-transform';
+      const url = (await AsyncStorage.getItem('useBetaLocationTransform')) === 'true' ? '/location-transform-new' : '/location-transform';
 
       const response = await fetch(`${API_BASE}${url}`, {
         method: 'POST',

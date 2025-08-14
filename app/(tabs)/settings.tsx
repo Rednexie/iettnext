@@ -55,18 +55,21 @@ export default function SettingsScreen() {
 
             if (key === 'locationCache') {
               const cache = JSON.parse(item);
-              locationCacheCount = Object.keys(cache).length;
-              locationCacheSize = itemSize;
-            } else if (key.startsWith('h=')) {
+              legacyLocationCacheCount = Object.keys(cache).length;
+              legacyLocationCacheSize = itemSize;
+            }
+	    else if (key === 'locationCacheBeta'){
+  	      const cache = JSON.parse(item);
+ 	      locationCacheCount = Object.keys(cache).length
+	      locationCacheSize = itemSize;
+	    }
+	    else if (key.startsWith('h=')) {
               lineInfoCacheCount++;
               lineInfoCacheSize += itemSize;
             } else if (key === 'favoriteVehicles' || key === 'favoriteStops' || key === 'favoriteLines') {
               const favorites = JSON.parse(item);
               favoriteCacheCount += favorites.length; 
               favoriteCacheSize += itemSize;
-            } else if (key.startsWith('ll=')) {
-              legacyLocationCacheCount++;
-              legacyLocationCacheSize += itemSize;
             }
           }
         }

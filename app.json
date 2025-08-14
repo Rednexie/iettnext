@@ -2,7 +2,7 @@
   "expo": {
     "name": "iettnext",
     "slug": "iettnext",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "orientation": "portrait",
     "icon": "./assets/images/iettnext.png",
     "scheme": "iettnext",
@@ -42,9 +42,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "56f079c5-7558-4364-bfc1-a8eb5e897084"
+      "router": {}
       }
     }
   }
