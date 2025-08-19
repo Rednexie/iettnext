@@ -948,7 +948,7 @@ export default function HatScreen() {
           activeOpacity={1} 
           onPress={() => setModalVisible(false)}
         >
-          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+          <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Hat Duyuruları</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>

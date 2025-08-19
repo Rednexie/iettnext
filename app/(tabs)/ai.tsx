@@ -292,7 +292,7 @@ export default function AiScreen() {
               
               <View style={styles.vehicleInfoRow}>
                 <Text style={styles.vehicleInfoLabel}>Hız:</Text>
-                <Text style={styles.vehicleInfoValue}>{vehicle.hiz ? `${vehicle.hiz} km/s` : 'Bilinmiyor'}</Text>
+                <Text style={styles.vehicleInfoValue}>{typeof vehicle.hiz !== 'undefined'  ? `${vehicle.hiz} km/s` : 'Bilinmiyor'}</Text>
               </View>
               
               {vehicle.konumSaati && (
@@ -307,6 +307,48 @@ export default function AiScreen() {
                   {lat.toFixed(6)}, {lon.toFixed(6)}
                 </Text>
               )}
+            </View>
+          </View>
+        );
+      }
+      
+      case 'get_line_info': {
+        const lineInfo = m.data;
+        if (!lineInfo) return <Text style={[styles.messageText, styles.assistantText]}>Hat bilgisi bulunamadı.</Text>;
+        
+        // Filter out empty values and format the data
+        const infoItems = [
+          { label: 'Sefer Süresi', value: lineInfo.tripDuration },
+          { label: 'Hat Tipi', value: lineInfo.lineType },
+          { label: 'Tarife Bilgisi', value: lineInfo.fareInfo },
+          ...(lineInfo.otherInfo ? Object.entries(lineInfo.otherInfo).map(([key, value]) => ({
+            label: key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
+            value: String(value)
+          })) : [])
+        ].filter(item => item.value);
+        
+        if (infoItems.length === 0) {
+          return <Text style={[styles.messageText, styles.assistantText]}>Bu hat için bilgi bulunamadı.</Text>;
+        }
+        
+        return (
+          <View style={styles.lineInfoContainer}>
+            <View style={styles.lineInfoHeader}>
+              <Text style={styles.lineInfoTitle}>Hat Bilgileri</Text>
+            </View>
+            <View style={styles.lineInfoSection}>
+              {infoItems.map((item, index) => (
+                <View 
+                  key={index} 
+                  style={[
+                    styles.lineInfoRow,
+                    index < infoItems.length - 1 && styles.lineInfoRowBorder
+                  ]}
+                >
+                  <Text style={styles.lineInfoLabel}>{item.label}:</Text>
+                  <Text style={styles.lineInfoValue}>{item.value}</Text>
+                </View>
+              ))}
             </View>
           </View>
         );
@@ -491,6 +533,51 @@ const styles = StyleSheet.create({
     color: '#8a6cf1',
     fontSize: 16,
     fontFamily: 'Inter_600SemiBold',
+  },
+  lineInfoContainer: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(138, 108, 241, 0.3)',
+    overflow: 'hidden',
+    marginVertical: 4,
+    width: '100%',
+  },
+  lineInfoHeader: {
+    backgroundColor: 'rgba(138, 108, 241, 0.1)',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(138, 108, 241, 0.2)',
+  },
+  lineInfoTitle: {
+    color: '#8a6cf1',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
+  },
+  lineInfoSection: {
+    padding: 4,
+  },
+  lineInfoRow: {
+    flexDirection: 'row',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  lineInfoRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(138, 108, 241, 0.1)',
+  },
+  lineInfoLabel: {
+    color: '#8a6cf1',
+    fontSize: 14,
+    width: 120,
+    fontFamily: 'Inter_500Medium',
+  },
+  lineInfoValue: {
+    color: '#e0e0e0',
+    fontSize: 14,
+    flex: 1,
+    fontFamily: 'Inter_400Regular',
   },
   vehicleInfoSection: {
     padding: 12,
