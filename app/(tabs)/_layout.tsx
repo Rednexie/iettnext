@@ -82,20 +82,20 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Ayarlar',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="ai"
         options={{
           title: 'AI',
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="star-four-points" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Ayarlar',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings" color={color} size={size} />
           ),
         }}
       />

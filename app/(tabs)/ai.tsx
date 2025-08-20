@@ -140,6 +140,7 @@ export default function AiScreen() {
     if (!m.tool || !m.data) {
       return <Text style={[styles.messageText, m.sender === 'user' ? styles.userText : styles.assistantText]}>{m.text}</Text>;
     }
+    // console.log(m)
     switch (m.tool) {
       case 'get_time_table': {
         return (
@@ -213,6 +214,7 @@ export default function AiScreen() {
         );
       }
       case 'get_vehicle_info': {
+        
         const vehicle = m.data;
         if (!vehicle) return <Text style={[styles.messageText, styles.assistantText]}>Araç bilgisi bulunamadı.</Text>;
         
@@ -316,6 +318,9 @@ export default function AiScreen() {
         const lineInfo = m.data;
         if (!lineInfo) return <Text style={[styles.messageText, styles.assistantText]}>Hat bilgisi bulunamadı.</Text>;
         
+        // Get the line name from the message or use a default
+        const lineName = lineInfo.lineName || 'Hat';
+        
         // Filter out empty values and format the data
         const infoItems = [
           { label: 'Sefer Süresi', value: lineInfo.tripDuration },
@@ -332,21 +337,15 @@ export default function AiScreen() {
         }
         
         return (
-          <View style={styles.lineInfoContainer}>
-            <View style={styles.lineInfoHeader}>
-              <Text style={styles.lineInfoTitle}>Hat Bilgileri</Text>
-            </View>
-            <View style={styles.lineInfoSection}>
+          <View style={styles.infoCard}>
+            <Text style={styles.infoCardTitle}>Hat Bilgileri</Text>
+            <View style={styles.infoGrid}>
               {infoItems.map((item, index) => (
-                <View 
-                  key={index} 
-                  style={[
-                    styles.lineInfoRow,
-                    index < infoItems.length - 1 && styles.lineInfoRowBorder
-                  ]}
-                >
-                  <Text style={styles.lineInfoLabel}>{item.label}:</Text>
-                  <Text style={styles.lineInfoValue}>{item.value}</Text>
+                <View key={index} style={styles.infoItem}>
+                  <Text style={styles.infoLabel}>{item.label}</Text>
+                  <Text style={styles.infoValue} numberOfLines={2} ellipsizeMode="tail">
+                    {item.value}
+                  </Text>
                 </View>
               ))}
             </View>
@@ -454,6 +453,44 @@ export default function AiScreen() {
 }
 
 const styles = StyleSheet.create({
+  infoCard: {
+    backgroundColor: '#1e1e2e',
+    borderRadius: 12,
+    padding: 16,
+    marginVertical: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  infoCardTitle: {
+    color: '#8a6cf1',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  infoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  infoItem: {
+    width: '48%',
+    marginBottom: 12,
+  },
+  infoLabel: {
+    color: '#a0a0b3',
+    fontSize: 12,
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  infoValue: {
+    color: '#ffffff',
+    fontSize: 14,
+    lineHeight: 20,
+  },
   container: { 
     flex: 1, 
     backgroundColor: '#0d0d1a',

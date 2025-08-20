@@ -1,8 +1,9 @@
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
-import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Dimensions, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FontAwesome5, Ionicons } from '@expo/vector-icons'; // Added FontAwesome5 for bell icon
+import React, { useEffect, useState, useRef } from 'react'; // Added useRef
+import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, Modal } from 'react-native'; // Added Modal
 import { router, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Helper component for dynamic font size
 import type { TextStyle } from 'react-native';
@@ -15,14 +16,14 @@ interface AutoSizeTextProps {
 }
 
 const AutoSizeText: React.FC<AutoSizeTextProps> = ({ content, style, minFontSize = 8, maxFontSize = 14 }) => {
-  const [fontSize, setFontSize] = React.useState<number>(maxFontSize);
-  const textRef = React.useRef<Text>(null);
+  const [fontSize, setFontSize] = useState<number>(maxFontSize); // Changed React.useState to useState
+  const textRef = useRef<Text>(null); // Changed React.useRef to useRef
 
-  React.useEffect(() => {
+  useEffect(() => {
     setFontSize(maxFontSize);
   }, [content, maxFontSize]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!textRef.current) return;
     const measure = () => {
       // @ts-ignore
@@ -48,8 +49,6 @@ const AutoSizeText: React.FC<AutoSizeTextProps> = ({ content, style, minFontSize
 };
 
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
 // Utility function to decode HTML entities and fix encoding issues
 const decodeHTMLEntities = (text: string): string => {
   if (!text) return '';
@@ -62,9 +61,45 @@ const decodeHTMLEntities = (text: string): string => {
     .replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, ' ')
     // Convert numeric HTML entities to characters
-    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+    .replace(/&#(\d+);/g, (match, dec) => {
+      const charCode = parseInt(dec, 10);
+      // Handle Turkish characters specifically
+      switch (charCode) {
+        case 199: return 'Ç';
+        case 231: return 'ç';
+        case 286: return 'Ğ';
+        case 287: return 'ğ';
+        case 304: return 'İ';
+        case 305: return 'ı';
+        case 350: return 'Ş';
+        case 351: return 'ş';
+        case 214: return 'Ö';
+        case 246: return 'ö';
+        case 220: return 'Ü';
+        case 252: return 'ü';
+        default: return String.fromCharCode(charCode);
+      }
+    })
     // Handle hex entities
-    .replace(/&#x([\da-f]+);/gi, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#x([\da-f]+);/gi, (match, hex) => {
+      const charCode = parseInt(hex, 16);
+      // Handle Turkish characters specifically
+      switch (charCode) {
+        case 0xC7: return 'Ç';
+        case 0xE7: return 'ç';
+        case 0x011E: return 'Ğ';
+        case 0x011F: return 'ğ';
+        case 0x130: return 'İ';
+        case 0x131: return 'ı';
+        case 0x15E: return 'Ş';
+        case 0x15F: return 'ş';
+        case 0xD6: return 'Ö';
+        case 0xF6: return 'ö';
+        case 0xDC: return 'Ü';
+        case 0xFC: return 'ü';
+        default: return String.fromCharCode(charCode);
+      }
+    })
     // Remove any other HTML tags
     .replace(/<\/?[^>]+(>|$)/g, '');
 };
@@ -93,8 +128,6 @@ interface DepartureTable {
   title: string;
   schedule: Record<'I' | 'C' | 'P', DepartureTime[]>;
 };
-
-// const API_BASE = "http://192.168.1.110:3000"
 
 
 const API_BASE = 'https://iett.rednexie.workers.dev'
@@ -227,8 +260,8 @@ const VehiclesByDirection = ({ line }: { line: string }) => {
           v.vehicleDoorCode === vehicle.vehicleDoorCode 
             ? { ...v, locationName: 'Konum Bilinmiyor' }
             : v
-        )
-      );
+          )
+        );
     }
   };
 
@@ -304,10 +337,8 @@ const VehiclesByDirection = ({ line }: { line: string }) => {
 };
 
 
-
-
-
 export default function HatScreen() {
+  
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -323,8 +354,9 @@ export default function HatScreen() {
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [stations, setStations] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
   const [direction, setDirection] = useState(0);
+  const stationsCache = useRef<Record<string, { forward: string[], backward: string[], timestamp: number }>>({});
+  const STATIONS_CACHE_TTL = 15 * 60 * 1000; // 15 minutes
   const [activeTab, setActiveTab] = useState<'times' | 'stations' | 'vehicles' | 'about'>('times');
   const [favoriteLines, setFavoriteLines] = useState<{ code: string; name: string }[]>([]);
   const [lineInfo, setLineInfo] = useState<{
@@ -335,6 +367,23 @@ export default function HatScreen() {
     error?: string;
   }>({ loading: false });
   const isFavoriteLine = selected ? favoriteLines.some(f => f.code === selected.line) : false;
+
+  // Added state for announcement modal
+  const [modalVisible, setModalVisible] = useState(false);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(false);
+
+  // Added state for line name
+  const [lineName, setLineName] = useState<string | null>(null);
+
+  // Update line name when line is selected
+  useEffect(() => {
+    if (selected) {
+      // Only set the route name without the line code
+      setLineName(decodeHTMLEntities(selected.name));
+    } else {
+      setLineName(null);
+    }
+  }, [selected]);
 
   const params = useLocalSearchParams();
   useEffect(() => {
@@ -348,86 +397,9 @@ export default function HatScreen() {
     }
   }, [params.line]);
 
-  // Dynamic font size for line name
-  const lineNameText = selected ? decodeHTMLEntities(selected.name) : '';
-  // make a three degree curve for the font size
-  // use ternary operator
-  const lineNameFontSize = lineNameText.length > 55 ? 8 : lineNameText.length > 45 ? 9 : lineNameText.length > 35 ? 11 : lineNameText.length > 27 ? 12 : 14
-  //const lineNameFontSize = lineNameText.length > 33 ? 11 : 14;
-
-  // Parse station anchor HTML into text entries
-  const parseAnchors = (html: string): string[] => {
-    const anchorRegex = /<a[^>]*>([\s\S]*?)<\/a>/g;
-    const result: string[] = [];
-    let m: RegExpExecArray | null;
-    while ((m = anchorRegex.exec(html)) !== null) {
-      const txt = decodeHTMLEntities(m[1].trim()).replace(/<[^>]+>/g, '').trim();
-      if (txt) result.push(txt);
-    }
-    return result;
-  };
-
-  // In-memory cache for stations
-  const stationsCache = React.useRef<Record<string, {forward: string[], backward: string[], timestamp: number}>>({});
-  const STATIONS_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
-
-  // Load stations for lineCode and direction
-  const loadStations = async (lineCode: string, dir: number) => {
-    // Only load stations if we're on the stations tab or about to switch to it
-    if (activeTab !== 'stations' && activeTab !== 'times') {
-      return;
-    }
-
-    const cacheKey = `h=${lineCode}`;
-    const now = Date.now();
-
-    // Check in-memory cache first
-    if (stationsCache.current[cacheKey] && 
-        now - stationsCache.current[cacheKey].timestamp < STATIONS_CACHE_TTL) {
-      const { forward, backward } = stationsCache.current[cacheKey];
-      setStations(dir === 0 ? forward : backward);
-      return;
-    }
-
-    try {
-      const url = `${API_BASE}/api/route-stations?hatkod=${lineCode}&hatstart=x&hatend=y&langid=1`;
-      const res = await fetch(url);
-      if (!res.ok) {
-        throw new Error(`Error loading stations, status ${res.status}`);
-      }
-      
-      const text = await res.text();
-      const allLinks = parseAnchors(text);
-      const restartIdx = allLinks.findIndex((s, i) => i > 0 && /^\s*1\./.test(s));
-      const splitIndex = restartIdx !== -1 ? restartIdx : Math.ceil(allLinks.length / 2);
-      const forwardLinks = allLinks.slice(0, splitIndex);
-      const backwardLinks = allLinks.slice(splitIndex);
-      
-      // Update cache
-      stationsCache.current[cacheKey] = {
-        forward: forwardLinks,
-        backward: backwardLinks,
-        timestamp: now
-      };
-      
-      setStations(dir === 0 ? forwardLinks : backwardLinks);
-    } catch (e) {
-      console.error('Error loading stations:', e);
-      setStations([]);
-    }
-  };
-
-  // Reload stations when selected line, direction, or tab changes
-  useEffect(() => {
-    // Only load stations if we're on the stations tab or times tab
-    if (activeTab === 'stations' || activeTab === 'times') {
-      if (selected) loadStations(selected.line, direction);
-    }
-  }, [selected, direction, activeTab]);
-
   // Debounce and cancel previous fetches for suggestions
-  const debounceTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const abortController = React.useRef<AbortController | null>(null);
+  const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null); // Changed React.useRef to useRef
+  const abortController = useRef<AbortController | null>(null); // Changed React.useRef to useRef
 
   useEffect(() => {
     if (debounceTimeout.current) {
@@ -605,13 +577,6 @@ export default function HatScreen() {
     return timeData?.text || '';
   };
 
-  // Helper function to extract just the time part without HTML
-  const extractTimeText = (html: string): string => {
-    if (!html) return '';
-    // Remove HTML tags and trim
-    return html.replace(/<[^>]*>/g, '').trim();
-  };
-
   const selectLine = (item: LineItem) => {
     setSelected(item);
     setQuery(item.line);
@@ -622,23 +587,16 @@ export default function HatScreen() {
   const fetchDetails = async (item: LineItem) => {
     setLoading(true);
     try {
-      const [htmlRes, anRes] = await Promise.all([
+      const [htmlRes] = await Promise.all([
         fetch(`${API_BASE}/line-time-table`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ line: item.line }),
-        }),
-        fetch(`${API_BASE}/announcements`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ line: item.line }),
         }),
       ]);
       if (!htmlRes.ok) console.error(`Error fetching timetable, status ${htmlRes.status}`);
-      if (!anRes.ok) console.error(`Error fetching announcements, status ${anRes.status}`);
       const html = await htmlRes.text();
       setTimetable(parseLineTimeTable(html));
-      setAnnouncements(await anRes.json());
     } catch (e) {
       console.error('Error fetching details:', e);
     } finally {
@@ -651,7 +609,7 @@ export default function HatScreen() {
     setQuery('');
     setStations([]);
     setTimetable([]);
-    setAnnouncements([]);
+    setAnnouncements([]); // Clear announcements when search is reset
   };
 
   const handleSubmitEditing = () => {
@@ -659,6 +617,83 @@ export default function HatScreen() {
       selectLine({ line: query.trim().toUpperCase(), name: query.trim().toUpperCase() });
     }
   };
+
+  // Parse anchor tags from HTML
+  const parseAnchors = (html: string): string[] => {
+    const anchorRegex = /<a[^>]*>([\s\S]*?)<\/a>/g;
+    const result: string[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = anchorRegex.exec(html)) !== null) {
+      const txt = decodeHTMLEntities(m[1].trim()).replace(/<[^>]+>/g, '').trim();
+      if (txt) result.push(txt);
+    }
+    return result;
+  };
+
+  // Load stations for the selected line and direction
+  const loadStations = async (lineCode: string, dir?: number) => {
+    if (!lineCode) return;
+    
+    const cacheKey = `stations_${lineCode}`;
+    const now = Date.now();
+
+    // Check in-memory cache first
+    if (stationsCache.current[cacheKey] && 
+        now - stationsCache.current[cacheKey].timestamp < STATIONS_CACHE_TTL) {
+      const { forward, backward } = stationsCache.current[cacheKey];
+      setStations(dir === 0 ? forward : backward);
+      return;
+    }
+
+    setLoading(true);
+    try {
+
+      const response = await fetch(`${API_BASE}/api/route-stations?hatkod=${lineCode}&hatstart=x&hatend=y&langid=1`, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error loading stations, status ${response.status}`);
+      }
+      
+      const html = await response.text();
+      const allStations = parseAnchors(html);
+      
+      // Handle circular routes by finding the restart point
+      const restartIdx = allStations.findIndex((s, i) => i > 0 && /^\s*1\./.test(s));
+      const splitIndex = restartIdx !== -1 ? restartIdx : Math.ceil(allStations.length / 2);
+      
+      const forwardStations = allStations.slice(0, splitIndex);
+      const backwardStations = allStations.slice(splitIndex);
+      
+      // Update cache
+      stationsCache.current[cacheKey] = {
+        forward: forwardStations,
+        backward: backwardStations,
+        timestamp: now
+      };
+      
+      setStations(dir === 0 ? forwardStations : backwardStations);
+    } catch (error) {
+      console.error('Error loading stations:', error);
+      // If we have cached data, use it even if it's expired
+      if (stationsCache.current[cacheKey]) {
+        const { forward, backward } = stationsCache.current[cacheKey];
+        setStations(dir === 0 ? forward : backward);
+      } else {
+        setStations([]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load stations when direction or selected line changes
+  useEffect(() => {
+    if (selected && (activeTab === 'stations' || activeTab === 'times')) {
+      loadStations(selected.line, direction);
+    }
+  }, [selected, direction, activeTab]);
 
   useEffect(() => {
     (async () => {
@@ -684,6 +719,35 @@ export default function HatScreen() {
     setFavoriteLines(updated);
     await AsyncStorage.setItem('favoriteLines', JSON.stringify(updated));
   }
+
+  async function handleAnnouncementsPress() {
+    if (!selected) return;
+    setAnnouncementsLoading(true);
+    setModalVisible(true);
+    try {
+      const response = await fetch(`${API_BASE}/announcements`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          line: selected.line
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Duyurular alınamadı');
+      }
+      
+      const data = await response.json();
+      setAnnouncements(data);
+    } catch (error) {
+      console.error('Error fetching announcements:', error);
+      // Removed specific error for announcements to avoid overwriting main screen error
+    } finally {
+      setAnnouncementsLoading(false);
+    }
+  };
 
   if (!fontsLoaded) return null;
 
@@ -734,35 +798,35 @@ export default function HatScreen() {
         )}
       </View>
       {!selected && query.trim() === '' && favoriteLines.length > 0 && (
-  <View style={styles.favoritesContainer}>
-    <Text style={styles.favoritesTitle}>Favori Hatlar</Text>
-    <View style={styles.favoritesList}>
-      {favoriteLines.map(f => {
-        let fontSize = 16;
-        if (f.name.length > 28) fontSize = 12;
-        else if (f.name.length > 20) fontSize = 13.5;
-        else if (f.name.length > 14) fontSize = 14.5;
-        return (
-          <View key={f.code} style={styles.favoriteItem}>
-            <TouchableOpacity
-              onPress={() => removeFavoriteLine(f.code)}
-              style={[styles.favoriteBtn, { justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }]}
-            >
-              <Ionicons name="star" size={20} color="#6a4cff" style={[styles.favoriteIcon, { alignSelf: 'center', marginLeft: -10 }]} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => selectLine({ line: f.code, name: f.name })}
-              style={{ flex: 1, minWidth: 40, flexDirection: 'row', alignItems: 'center' }}
-            >
-              <Text style={styles.favoriteCode}>{f.code}</Text>
-              <Text style={styles.favoriteName}>{f.name}</Text>
-            </TouchableOpacity>
+        <View style={styles.favoritesContainer}>
+          <Text style={styles.favoritesTitle}>Favori Hatlar</Text>
+          <View style={styles.favoritesList}>
+            {favoriteLines.map(f => {
+              let fontSize = 16;
+              if (f.name.length > 28) fontSize = 12;
+              else if (f.name.length > 20) fontSize = 13.5;
+              else if (f.name.length > 14) fontSize = 14.5;
+              return (
+                <View key={f.code} style={styles.favoriteItem}>
+                  <TouchableOpacity
+                    onPress={() => removeFavoriteLine(f.code)}
+                    style={[styles.favoriteBtn, { justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }]}
+                  >
+                    <Ionicons name="star" size={20} color="#6a4cff" style={[styles.favoriteIcon, { alignSelf: 'center', marginLeft: -10 }]} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => selectLine({ line: f.code, name: f.name })}
+                    style={{ flex: 1, minWidth: 40, flexDirection: 'row', alignItems: 'center' }}
+                  >
+                    <Text style={styles.favoriteCode}>{f.code}</Text>
+                    <Text style={styles.favoriteName}>{f.name}</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })} 
           </View>
-        );
-      })} 
-    </View>
-  </View>
-)}
+        </View>
+      )}
       {selected && (
         <View style={[styles.resultContainer, { paddingTop: 16 }]}>
           {loading ? (
@@ -797,157 +861,165 @@ export default function HatScreen() {
               </View>
               <View style={styles.resultHeader}>
                 <View style={styles.lineInfoContainer}>
-                  <Text style={styles.lineCodeLarge}>{selected.line}</Text>
-                  <Text style={[styles.lineNameLarge, { fontSize: lineNameFontSize }]}>{lineNameText}</Text>
+                  <View style={styles.lineCodeRow}>
+                    <Text style={styles.lineCodeLarge}>{selected.line}</Text>
+                    <View style={styles.headerButtonsContainer}>
+                      <TouchableOpacity 
+                        style={[styles.actionBtn, styles.smallStarBtn]}
+                        onPress={toggleFavoriteLine}
+                      >
+                        <Ionicons 
+                          name={isFavoriteLine ? 'star' : 'star-outline'} 
+                          size={20} 
+                          color={isFavoriteLine ? '#fff' : '#fff'} 
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={[styles.actionBtn, { marginLeft: 8 }]} 
+                        onPress={handleAnnouncementsPress}
+                      >
+                        <FontAwesome5 name="bell" size={16} color="#fff" />
+                        <Text style={styles.actionBtnText}>Duyuru</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 </View>
               </View>
-              {announcements.length > 0 && (
-                <TouchableOpacity 
-                  style={styles.announcementButton} 
-                  onPress={() => setModalVisible(true)}
-                >
-                  <Ionicons name="megaphone-outline" size={20} color="#fff" />
-                  <Text style={styles.announcementButtonText}>Hat Duyuruları</Text>
-                </TouchableOpacity>
-              )}
               {activeTab === 'times' && (
-  <View style={styles.contentCard}>
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>Sefer Saatleri</Text>
-      <TouchableOpacity style={styles.favoriteBtn} onPress={toggleFavoriteLine}>
-        <Ionicons name={isFavoriteLine ? 'star' : 'star-outline'} size={24} color="#8a6cf1" />
-      </TouchableOpacity>
-      <Switch
-        trackColor={{ false: '#0d0d1a', true: '#0d0d1a' }}
-        thumbColor={direction ? '#8a6cf1' : '#6a4cff'}
-        ios_backgroundColor="#0d0d1a"
-        onValueChange={(val) => setDirection(val ? 1 : 0)}
-        value={direction === 1}
-        style={styles.directionSwitch}
-      />
-    </View>
-    {timetable.length > 0 && timetable[direction] ? (
-      <>
-        <Text style={[styles.sectionTitle, { fontSize: 14, marginBottom: 8 }]}>{timetable[direction].title}</Text>
-        <View style={styles.tableHeader}>
-          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>İş Günleri</Text>
-          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Cumartesi</Text>
-          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Pazar</Text>
-        </View>
-        {timetable[direction].schedule.I.map((_, idx) => (
-          <View key={idx} style={[styles.tableRow, idx % 2 === 1 && styles.tableRowAlt]}>
-            <Text style={[styles.tableCell, { flex: 1 }, timetable[direction].schedule.I[idx]?.isSpecial && { color: 'red' }]}> 
-              {formatDepartureTime(timetable[direction].schedule.I[idx])}
-            </Text>
-            <Text style={[styles.tableCell, { flex: 1 }, timetable[direction].schedule.C[idx]?.isSpecial && { color: 'red' }]}> 
-              {formatDepartureTime(timetable[direction].schedule.C[idx])}
-            </Text>
-            <Text style={[styles.tableCell, { flex: 1 }, timetable[direction].schedule.P[idx]?.isSpecial && { color: 'red' }]}> 
-              {formatDepartureTime(timetable[direction].schedule.P[idx])}
-            </Text>
-          </View>
-        ))}
-      </>
-    ) : (
-      <Text style={styles.noDataText}>Bu hat için sefer saatleri bulunmamaktadır.</Text>
-    )}
-  </View>
-)}
-{activeTab === 'stations' && (
-  <View style={styles.contentCard}>
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>Duraklar</Text>
-      <TouchableOpacity style={styles.favoriteBtn} onPress={toggleFavoriteLine}>
-        <Ionicons name={isFavoriteLine ? 'star' : 'star-outline'} size={24} color="#8a6cf1" />
-      </TouchableOpacity>
-      <Switch
-        trackColor={{ false: '#0d0d1a', true: '#0d0d1a' }}
-        thumbColor={direction ? '#8a6cf1' : '#6a4cff'}
-        ios_backgroundColor="#0d0d1a"
-        onValueChange={(val) => setDirection(val ? 1 : 0)}
-        value={direction === 1}
-        style={styles.directionSwitch}
-      />
-    </View>
-    <View style={styles.stationContainer}>
-      <View style={styles.stationLine} />
-      {stations.map((station, index) => (
-        <View key={index} style={styles.stationItem}>
-          <View style={styles.stationDot} />
-          <TouchableOpacity onPress={() => router.push({ pathname: '/durak', params: { query: decodeHTMLEntities(station) } })}> 
-              <Text style={styles.stationName}>{decodeHTMLEntities(station)}</Text>
-          </TouchableOpacity>
-        </View>
-      ))}
-    </View>
-  </View>
-)}
-{activeTab === 'vehicles' && (
-  <View style={styles.contentCard}>
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>Araçlar</Text>
-    </View>
-    {selected ? (
-      <VehiclesByDirection line={selected.line} />
-    ) : (
-      <Text style={styles.noDataText}>Bir hat seçiniz.</Text>
-    )}
-  </View>
-)}
-{activeTab === 'about' && (
-  <View style={styles.contentCard}>
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>Hat Bilgileri</Text>
-    </View>
-    <View style={styles.aboutContainer}>
-      {lineInfo.loading ? (
-        <ActivityIndicator size="small" color="#8a6cf1" style={styles.loader} />
-      ) : lineInfo.error ? (
-        <Text style={[styles.aboutText, { color: '#ff6b6b' }]}>{lineInfo.error}</Text>
-      ) : (
-        <>
-          {lineInfo.tripDuration && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Sefer Süresi:</Text>
-              <Text style={styles.infoValue}>{lineInfo.tripDuration}</Text>
-            </View>
-          )}
-          {lineInfo.lineType && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Hat Tipi:</Text>
-              <Text style={styles.infoValue}>{lineInfo.lineType}</Text>
-            </View>
-          )}
-          {lineInfo.fareInfo && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Tarife Bilgisi:</Text>
-              <Text style={styles.infoValue}>{lineInfo.fareInfo}</Text>
-            </View>
-          )}
-          {!lineInfo.tripDuration && !lineInfo.lineType && !lineInfo.fareInfo && (
-            <Text style={styles.aboutText}>Bu hat için bilgi bulunamadı.</Text>
-          )}
-        </>
-      )}
-    </View>
-  </View>
-)}
+                <View style={styles.contentCard}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Sefer Saatleri</Text>
+                    <Switch
+                      trackColor={{ false: '#0d0d1a', true: '#0d0d1a' }}
+                      thumbColor={direction ? '#8a6cf1' : '#6a4cff'}
+                      ios_backgroundColor="#0d0d1a"
+                      onValueChange={(val) => setDirection(val ? 1 : 0)}
+                      value={direction === 1}
+                      style={styles.directionSwitch}
+                    />
+                  </View>
+                  {timetable.length > 0 && timetable[direction] ? (
+                    <>
+                      <Text style={[styles.sectionTitle, { fontSize: 14, marginBottom: 8 }]}>{timetable[direction].title}</Text>
+                      <View style={styles.tableHeader}>
+                        <Text style={[styles.tableHeaderCell, { flex: 1 }]}>İş Günleri</Text>
+                        <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Cumartesi</Text>
+                        <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Pazar</Text>
+                      </View>
+                      {timetable[direction].schedule.I.map((_, idx) => (
+                        <View key={idx} style={[styles.tableRow, idx % 2 === 1 && styles.tableRowAlt]}>
+                          <Text style={[styles.tableCell, { flex: 1 }, timetable[direction].schedule.I[idx]?.isSpecial && { color: 'red' }]}> 
+                            {formatDepartureTime(timetable[direction].schedule.I[idx])}
+                          </Text>
+                          <Text style={[styles.tableCell, { flex: 1 }, timetable[direction].schedule.C[idx]?.isSpecial && { color: 'red' }]}> 
+                            {formatDepartureTime(timetable[direction].schedule.C[idx])}
+                          </Text>
+                          <Text style={[styles.tableCell, { flex: 1 }, timetable[direction].schedule.P[idx]?.isSpecial && { color: 'red' }]}> 
+                            {formatDepartureTime(timetable[direction].schedule.P[idx])}
+                          </Text>
+                        </View>
+                      ))}
+                    </>
+                  ) : (
+                    <Text style={styles.noDataText}>Bu hat için sefer saatleri bulunmamaktadır.</Text>
+                  )}
+                </View>
+              )}
+              {activeTab === 'stations' && (
+                <View style={styles.contentCard}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Duraklar</Text>
+                    <Switch
+                      trackColor={{ false: '#0d0d1a', true: '#0d0d1a' }}
+                      thumbColor={direction ? '#8a6cf1' : '#6a4cff'}
+                      ios_backgroundColor="#0d0d1a"
+                      onValueChange={(val) => setDirection(val ? 1 : 0)}
+                      value={direction === 1}
+                      style={styles.directionSwitch}
+                    />
+                  </View>
+                  <View style={styles.stationContainer}>
+                    <View style={styles.stationLine} />
+                    {stations.map((station, index) => (
+                      <View key={index} style={styles.stationItem}>
+                        <View style={styles.stationDot} />
+                        <TouchableOpacity onPress={() => router.push({ pathname: '/durak', params: { query: decodeHTMLEntities(station) } })}> 
+                            <Text style={styles.stationName}>{decodeHTMLEntities(station)}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+              {activeTab === 'vehicles' && (
+                <View style={styles.contentCard}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Araçlar</Text>
+                  </View>
+                  {selected ? (
+                    <VehiclesByDirection line={selected.line} />
+                  ) : (
+                    <Text style={styles.noDataText}>Bir hat seçiniz.</Text>
+                  )}
+                </View>
+              )}
+              {activeTab === 'about' && (
+                <View style={styles.contentCard}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Hat Bilgileri</Text>
+                  </View>
+                  <View style={styles.aboutContainer}>
+                    {lineInfo.loading ? (
+                      <ActivityIndicator size="small" color="#8a6cf1" style={styles.loader} />
+                    ) : lineInfo.error ? (
+                      <Text style={[styles.aboutText, { color: '#ff6b6b' }]}>{lineInfo.error}</Text>
+                    ) : (
+                      <>
+                        {lineInfo.tripDuration && (
+                          <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Sefer Süresi:</Text>
+                            <Text style={styles.infoValue}>{lineInfo.tripDuration}</Text>
+                          </View>
+                        )}
+                        {lineInfo.lineType && (
+                          <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Hat Tipi:</Text>
+                            <Text style={styles.infoValue}>{decodeHTMLEntities(lineInfo.lineType)}</Text>
+                          </View>
+                        )}
+                        {lineInfo.fareInfo && (
+                          <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Tarife Bilgisi:</Text>
+                            <Text style={styles.infoValue}>{decodeHTMLEntities(lineInfo.fareInfo)}</Text>
+                          </View>
+                        )}
+
+                        {lineName && (
+                          <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Güzergâh:</Text>
+                            <Text style={styles.infoValue}>{lineName}</Text>
+                          </View>
+                        )}
+                        {!lineInfo.tripDuration && !lineInfo.lineType && !lineInfo.fareInfo && !lineName && (
+                          <Text style={styles.aboutText}>Bu hat için bilgi bulunamadı.</Text>
+                        )}
+                      </>
+                    )}
+                  </View>
+                </View>
+              )}
             </>
           )}
         </View>
       )}
-      
+      {/* Announcements Modal */}
       <Modal
         visible={modalVisible}
         transparent
         animationType="fade"
         onRequestClose={() => setModalVisible(false)}
       >
-        <TouchableOpacity 
-          style={styles.modalBackground} 
-          activeOpacity={1} 
-          onPress={() => setModalVisible(false)}
-        >
+        <View style={styles.modalBackground}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Hat Duyuruları</Text>
@@ -957,52 +1029,34 @@ export default function HatScreen() {
             </View>
             
             <ScrollView style={styles.announcementList} contentContainerStyle={{ flexGrow: 1 }}>
-              {announcements.length > 0 ? (
-                announcements.map((announcement, index) => {
-                  // Determine the severity level for styling
-                  const level = announcement.level || announcement.severity || '1';
-                  
-                  // Process content - split by '|' for multi-line display like in web version
-                  let contentLines = [];
-                  const content = decodeHTMLEntities(announcement.content || announcement.BILGI || 'İçerik belirtilmemiş');
-                  
-                  if (content.includes('|')) {
-                    contentLines = content.split('|').map(line => line.trim());
-                  } else if (content.length > 120) {
-                    // Split by sentences if content is long
-                    contentLines = content.split(/(?<=[.!?])\s+/).filter(line => line.trim().length > 0);
-                  } else {
-                    contentLines = [content];
-                  }
-                  
-                  return (
+              {announcementsLoading ? (
+                <ActivityIndicator size="large" color="#8a6cf1" style={styles.loader} />
+              ) : announcements.length > 0 ? (
+                <>
+                  {announcements.map((announcement, index) => (
                     <View 
                       key={index} 
                       style={[
                         styles.announcementItem,
-                        level === '3' && styles.announcementItemCritical,
-                        level === '2' && styles.announcementItemWarning
+                        (announcement.severity === 'warning' || announcement.level === 'warning') && styles.announcementItemWarning,
+                        (announcement.severity === 'critical' || announcement.level === 'critical') && styles.announcementItemCritical,
                       ]}
                     >
                       <Text style={styles.announcementDate}>
-                          {(announcement.date || announcement.VERI_SAATI) ? 
-                          announcement.date || announcement.VERI_SAATI : 
-                          'Tarih belirtilmemiş'}
+                        {announcement.date || announcement.VERI_SAATI}
                       </Text>
-                      {contentLines.map((line, lineIndex) => (
-                        <Text key={lineIndex} style={styles.announcementText}>
-                          {line}
-                        </Text>
-                      ))}
+                      <Text style={styles.announcementText}>
+                        {announcement.content || announcement.BILGI}
+                      </Text>
                     </View>
-                  );
-                })
+                  ))}
+                </>
               ) : (
                 <Text style={styles.noDataText}>Bu hat için duyuru bulunmamaktadır.</Text>
               )}
             </ScrollView>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
     </ScrollView>
   );
@@ -1098,20 +1152,32 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    paddingHorizontal: 8,
   },
   lineInfoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
+  lineCodeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerButtonsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 12,
+  },
   lineCodeLarge: {
-    backgroundColor: 'rgba(138, 108, 241, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
+    fontSize: 22,
+    fontFamily: 'Inter_700Bold',
     color: '#8a6cf1',
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 18,
+    paddingVertical: 4,
+    borderRadius: 4,
     marginRight: 12,
+    backgroundColor: 'rgba(138, 108, 241, 0.2)',
+    paddingHorizontal: 10,
+    lineHeight: 24,
   },
   lineNameLarge: {
     color: '#ffffff',
@@ -1146,22 +1212,43 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     fontSize: 16,
   },
-  announcementButton: {
-    backgroundColor: 'rgba(138, 108, 241, 0.2)',
+  actionBtn: { // Renamed from announcementButton to be more general
+    backgroundColor: '#6a4cff', // Primary button color
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 0, // Match screen1's action buttons
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
     borderWidth: 1,
     borderColor: 'rgba(138, 108, 241, 0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 6,
+    minWidth: 42,
+    minHeight: 42,
   },
-  announcementButtonText: {
-    color: '#ffffff',
-    fontFamily: 'Inter_500Medium',
+  actionBtnText: {
+    color: '#fff',
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 13,
     marginLeft: 8,
+  },
+  smallStarBtn: { // Style for the small star button
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    minWidth: 42,
+    minHeight: 42,
+    width: 42,
+    height: 42,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionButtonRow: { // New style for button grouping
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   contentCard: {
     backgroundColor: '#1a1a2e',
@@ -1271,6 +1358,7 @@ const styles = StyleSheet.create({
     maxHeight: '80%',
     borderWidth: 1,
     borderColor: 'rgba(138, 108, 241, 0.2)',
+    overflow: 'hidden', // Ensure content stays inside and scrollbars show
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1287,7 +1375,8 @@ const styles = StyleSheet.create({
   },
   modalClose: {
     fontSize: 24,
-    color: '#ffffff',
+    color: '#8a6cf1', // Matched screen1's close button color
+    paddingHorizontal: 10, // Matched screen1's close button padding
   },
   announcementItemWarning: {
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
@@ -1429,6 +1518,7 @@ const styles = StyleSheet.create({
   },
   announcementList: {
     padding: 16,
+    flexGrow: 1,
   },
   announcementItem: {
     backgroundColor: 'rgba(138, 108, 241, 0.1)',
