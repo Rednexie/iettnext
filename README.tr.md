@@ -74,7 +74,8 @@
 ## 🙏 Teşekkürler
 - İstanbul Elektrik Tramvay ve Tünel (İETT) açık(!) veri için
 - Expo ve React Native ekipleri
-- Github ve Deno barındırma için
+- Cloudflare Workers ve Deno (barındırma için)
+- Github(kaynak kodu barındırma için)
 
 ---
 

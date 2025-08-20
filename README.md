@@ -1,84 +1,96 @@
-# iettnext – İstanbul Toplu Taşıma Asistanı
+# iettnext – Istanbul Public Transport Assistant
 
-[🇬🇧 English](./README.md)
+[🇹🇷 Türkçe](./README.tr.md)
 
-## 📱 Uygulama Sayfaları
+## 📱 App Pages
 
-### 1. **Araç Arama Sayfası**
-- Plaka/kapı kodu ile arama
-- Gerçek zamanlı araç takibi
-- "Depar" (kalkış) durumu göstergesi
-- Hat bilgisi ve güzergah detayları
+### 1. **Vehicle Search Page**
 
-### 2. **Durak Arama Sayfası**
-- Akıllı arama önerileri
-- Gerçek zamanlı varış saatleri
-- Detaylı araç bilgileri (model, hız, özellikler)
-- Özellikler (İBB WiFi, USB şarj, engelli erişimi, bisiklet erişimi, "depar" hattı vb.)
+* Search by license plate/door code
+* Real-time vehicle tracking
+* "Sprint line" status indicator
+* Route and line details
 
-### 3. **Hat Arama Sayfası**
-- Akıllı arama önerileri
-- Güzergah bilgisi ve tarife
-- Hat duyuruları (gecikmeler, değişiklikler)
+### 2. **Stop Search Page**
 
-### 4. **Harita Sayfası (Yakında)**
-- Canlı araç konumları
-- Durak ve gar lokasyonları
-- Özelleştirilebilir katmanlar
+* Smart search suggestions
+* Real-time arrival times
+* Detailed vehicle info (model, speed, features)
+* Features (ibbWifi, USB charging, wheelchair access, bike access, "sprint" line, etc.)
 
-### 5. **Eski Hatlar Arşivi**
-- Kaldırılan hat bilgileri
-- Tarihi güzergah verileri
-- Ulaşım tarihi referansı
+### 3. **Line Search Page**
 
----
+* Smart search suggestions
+* Route info and schedule
+* Line announcements (delays, changes)
 
-## ✨ Temel Özellikler
+### 4. **Map Page (Coming Soon)**
 
-### 🛡️ Gizlilik & Performans
-- Veri toplama yok
-- Minimum izin gereksinimi
-- Düşük veri kullanımı
-- Hızlı açılış ve sorunsuz kullanım
+* Live vehicle locations
+* Stop and depot locations
+* Customizable map layers
 
-### 🔍 Akıllı Arama
-- Anında öneriler
-- Bulanık eşleştirme
+### 5. **Archived Lines**
 
-### 🚌 Anlık Bilgi
-- Canlı araç konumları
-- Kesin varış saatleri
-- Kalkış durum göstergeleri
-
-### 🗺️ Kapsamlı Veri
-- Güncel hatlar ve araçlar
-- Tarihi/kaldırılan hatlar
-- Durak özellik detayları
-
-### 🤖 AI Asistanı
-- Doğal dil ile arama
-- Detaylı tool kit
-- Sınırsız kullanım
-
+* Information on discontinued lines
+* Historical route data
+* Reference for transport history
 
 ---
 
-## 🏗️ Kullanılan Teknolojiler
-- **React Native & Expo**
-- **expo-router**
-- **react-native-maps**
-- **@expo/vector-icons**
+## ✨ Key Features
+
+### 🛡️ Privacy & Performance
+
+* No data collection
+* Minimal permission requirements
+* Low data usage
+* Fast launch and smooth usage
+
+### 🔍 Smart Search
+
+* Instant suggestions
+* Fuzzy matching
+
+### 🚌 Real-Time Info
+
+* Live vehicle positions
+* Accurate arrival times
+* Departure status indicators
+
+### 🗺️ Comprehensive Data
+
+* Current lines and vehicles
+* Historical/discontinued lines
+* Detailed stop features
+
+### 🤖 AI Assistant
+
+* Search with natural language
+* Advanced tool kit
+* Unlimited usage
 
 ---
 
-## 🙏 Teşekkürler
-- İstanbul Elektrik Tramvay ve Tünel (İETT) açık(!) veri için
-- Expo ve React Native ekipleri
-- Github ve Deno barındırma için
+## 🏗️ Technologies Used
+
+* **React Native & Expo**
+* **expo-router**
+* **react-native-maps**
+* **@expo/vector-icons**
 
 ---
 
-# 📸 Ekran Görüntüleri
+## 🙏 Thanks To
+
+* Istanbul Electricity, Tramway and Tunnel Authority (IETT) for open(!) data
+* Expo and React Native teams
+* Cloudflare Workers and Deno for hosting
+* Github for repository hosting
+
+---
+
+# 📸 Screenshots
 
 ![Image](https://github.com/user-attachments/assets/df1a7b2a-c124-47ab-b78d-c5892539b80c)
 ![Image](https://github.com/user-attachments/assets/1e81b892-81d7-4828-b4c2-eae9ad3bdd17)
@@ -96,3 +108,4 @@
 ![Image](https://github.com/user-attachments/assets/91cf1dac-3b97-4729-bc61-a3c534393e73)
 ![Image](https://github.com/user-attachments/assets/f37be125-5089-47d3-90ec-c448148fcbd7)
 ![Image](https://github.com/user-attachments/assets/0e07bb42-43af-459d-9829-d5faa26fba33)
+
