@@ -348,7 +348,16 @@ export default function HomeScreen() {
           </Animated.View>
         )}
       </View>
+      
       <View style={styles.cardsContainer}>
+                {/* Eski Hatlar Card */}
+                <View style={styles.card}>
+          <Text style={styles.cardTitle}>Eski Hatlar</Text>
+          <Text style={styles.cardDesc}>Eski otobüs hatlarını sorgulayın</Text>
+          <TouchableOpacity style={styles.button} onPress={() => router.push('/eski')}>
+            <Text style={styles.buttonText}>Eski Hatlar</Text>
+          </TouchableOpacity>
+        </View> 
         {/* Araç Sorgulama Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Araç Sorgulama</Text>
@@ -383,14 +392,7 @@ export default function HomeScreen() {
             <Text style={styles.buttonText}>Hatlar</Text>
           </TouchableOpacity>
         </View>
-        {/* Eski Hatlar Card */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Eski Hatlar</Text>
-          <Text style={styles.cardDesc}>Kaldırılmış otobüs hatlarını sorgulayın</Text>
-          <TouchableOpacity style={styles.button} onPress={() => router.push('/eski')}>
-            <Text style={styles.buttonText}>Eski Hatlar</Text>
-          </TouchableOpacity>
-        </View>
+
         {/* AI Yardımcısı Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>AI Asistanı</Text>

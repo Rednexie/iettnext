@@ -131,7 +131,7 @@ interface DepartureTable {
 
 
 const API_BASE = 'https://iett.rednexie.workers.dev'
-const { width } = Dimensions.get('window');
+// const { width } = Dimensions.get('window');
 
 function openGoogleMaps(lat: number, lon: number) {
   const url = `https://maps.google.com/?q=${lat},${lon}`;
@@ -363,6 +363,7 @@ export default function HatScreen() {
     tripDuration?: string;
     lineType?: string;
     fareInfo?: string;
+    notes?: string[];
     loading: boolean;
     error?: string;
   }>({ loading: false });
@@ -470,6 +471,7 @@ export default function HatScreen() {
                 tripDuration: data.tripDuration,
                 lineType: data.lineType,
                 fareInfo: data.fareInfo,
+                notes: data.notes,
                 loading: false
               });
               return; // Exit early if using valid cache
@@ -489,6 +491,7 @@ export default function HatScreen() {
           
           const data = await response.json();
           
+          
           // Update cache with new data and current timestamp
           const cacheData = {
             data,
@@ -501,6 +504,7 @@ export default function HatScreen() {
             tripDuration: data.tripDuration,
             lineType: data.lineType,
             fareInfo: data.fareInfo,
+            notes: data.notes,
             loading: false
           });
         } catch (error) {
@@ -515,6 +519,7 @@ export default function HatScreen() {
                 tripDuration: data.tripDuration,
                 lineType: data.lineType,
                 fareInfo: data.fareInfo,
+                notes: data.notes,
                 loading: false
               });
               return;
@@ -993,11 +998,20 @@ export default function HatScreen() {
                             <Text style={styles.infoValue}>{decodeHTMLEntities(lineInfo.fareInfo)}</Text>
                           </View>
                         )}
-
                         {lineName && (
                           <View style={styles.infoRow}>
                             <Text style={styles.infoLabel}>Güzergâh:</Text>
                             <Text style={styles.infoValue}>{lineName}</Text>
+                          </View>
+                        )}
+
+
+                        {lineInfo.notes && (
+                          <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Notlar:</Text>
+                            <Text style={[styles.infoValue, {flex: 1}]}>
+                              {String(lineInfo.notes || '').replace(/\n/g, ' ')}
+                            </Text>
                           </View>
                         )}
                         {!lineInfo.tripDuration && !lineInfo.lineType && !lineInfo.fareInfo && !lineName && (
@@ -1503,6 +1517,18 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: 'row',
     marginBottom: 12,
+  },
+  notesContainer: {
+    marginTop: 8,
+  },
+  notesList: {
+    marginTop: 4,
+  },
+  noteText: {
+    color: '#e0e0e0',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 4,
   },
   infoLabel: {
     color: '#a0a0a0',

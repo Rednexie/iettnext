@@ -48,6 +48,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="harita"
         options={{
+          href: null,
           title: 'Harita',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="map" color={color} size={size} />
@@ -72,9 +73,11 @@ export default function TabLayout() {
           ),
         }}
       />
+      
       <Tabs.Screen
         name="eski"
         options={{
+          href: null,
           title: 'Eski Hatlar',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="history" color={color} size={size} />
