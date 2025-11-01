@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react'; // Added useEffect
-import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const API_BASE = "https://iett.rednexie.workers.dev"
 
@@ -29,6 +29,7 @@ interface Arrival {
   engelli?: boolean;
   bisiklet?: boolean;
   son_konum: string;
+  son_konum_saati?: string;
 }
 
 // Utility function to decode HTML entities and fix encoding issues (copied from HatScreen)
@@ -118,6 +119,40 @@ function ArrivalCard({ arrival }: { arrival: Arrival }) {
 
   const canShowMapLink = lon !== null && lat !== null && !isNaN(lon) && !isNaN(lat);
 
+  // Istanbul time (UTC+3) staleness check for son_konum_saati (HH:mm:ss)
+  const isStaleLocation = React.useMemo(() => {
+    const t = arrival.son_konum_saati;
+    if (!t || typeof t !== 'string') return false;
+    const parts = t.split(':');
+    if (parts.length < 2) return false;
+    const p = (v: string) => {
+      const n = parseInt(v, 10);
+      return isNaN(n) ? 0 : n;
+    };
+    const th = p(parts[0]);
+    const tm = p(parts[1]);
+    const ts = p(parts[2] ?? '0');
+    const now = new Date();
+    const h = (now.getUTCHours() + 3) % 24; // Turkey is UTC+3 year-round
+    const m = now.getUTCMinutes();
+    const s = now.getUTCSeconds();
+    const nowSec = h * 3600 + m * 60 + s;
+    const pastSec = th * 3600 + tm * 60 + ts;
+    const diffMinutes = (nowSec - pastSec) / 60;
+    // Only consider today; if negative (future within today), treat as not stale
+    return diffMinutes > 10;
+  }, [arrival.son_konum_saati]);
+
+  // Tooltip state for stale location icon
+  const [showStaleTip, setShowStaleTip] = useState(false);
+  const staleTipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleStaleIconPress = () => {
+    if (staleTipTimer.current) clearTimeout(staleTipTimer.current);
+    setShowStaleTip(true);
+    staleTipTimer.current = setTimeout(() => setShowStaleTip(false), 2500);
+  };
+
   return (
     <View style={styles.resultContainer}>
       <Text style={[styles.resultHeaderText, { color: '#8a6cf1' }]}>
@@ -125,7 +160,21 @@ function ArrivalCard({ arrival }: { arrival: Arrival }) {
         <Text style={[styles.resultHeaderText, { color: '#8a6cf1' }]}> ⇒ {arrival.saat} ({arrival.dakika} dk) {arrival.son_hiz} km/sa</Text>
       </Text>
       <Text style={styles.resultHeaderText}>{arrival.hatadi}</Text>
-      <Text style={styles.carInfo} selectable={true}>{arrival.kapino} ({arrival.ototip})</Text>
+      <View style={styles.detailsRow}>
+        <Text style={styles.carInfo} selectable={true}>{arrival.kapino} ({arrival.ototip})</Text>
+        {isStaleLocation ? (
+          <View style={styles.staleContainer}>
+            <Pressable onPress={handleStaleIconPress} accessibilityRole="button" accessibilityLabel="Konum 10 dakikadan daha eski olabilir">
+              <FontAwesome5 name="exclamation-circle" size={16} color="#facc15" />
+            </Pressable>
+            {showStaleTip && (
+              <View style={styles.staleTooltip}>
+                <Text style={styles.staleTooltipText}>Konum 10 dakikadan daha eski olabilir</Text>
+              </View>
+            )}
+          </View>
+        ) : null}
+      </View>
       <View style={styles.carInfoRow}>
         <FontAwesome5 name="wifi" size={18} color={arrival.wifi ? '#4ade80' : '#ef4444'} style={styles.featureIcon} />
         <FontAwesome5 name="snowflake" size={18} color={arrival.klima ? '#4ade80' : '#ef4444'} style={styles.featureIcon} />
@@ -864,6 +913,35 @@ const styles = StyleSheet.create({
   },
   carInfoRow: {
     flexDirection: 'row', alignItems: 'center', marginBottom: 8,
+  },
+  detailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  staleContainer: {
+    position: 'relative',
+    marginLeft: 8,
+  },
+  staleTooltip: {
+    position: 'absolute',
+    right: 0,
+    bottom: 22,
+    backgroundColor: 'rgba(26, 26, 46, 0.98)',
+    borderWidth: 1,
+    borderColor: 'rgba(138, 108, 241, 0.26)',
+    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    maxWidth: 240,
+    zIndex: 20,
+    elevation: 8,
+  },
+  staleTooltipText: {
+    color: '#e0e0e0',
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
   },
   featureIcon: { marginRight: 8, },
   carInfo: { color: '#e0e0e0', fontFamily: 'Inter_400Regular', marginBottom: 8 },
