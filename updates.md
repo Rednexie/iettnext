@@ -25,6 +25,6 @@
 - uygulama ikonu ve özel gün ikonları
 - duyurular için özel görüntüleme kısmı
 - ai eski hatlar erişimi
-- lineer algoritma
+- lineer algoritma(ve durak verisinin açık veri portalından json olarak alınıp ona göre hesaplanması?) 
 
   
