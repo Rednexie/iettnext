@@ -1,5 +1,15 @@
 # iettnext – Istanbul Public Transport Assistant
 
+> [!Caution]
+> Dear Users
+>
+> iettnext has been temporarily shut down due to administrative pressure and data access restrictions imposed by the Istanbul Metropolitan Municipality (İBB).
+> 
+> We plan to hold formal meetings with municipality officials during the upcoming summer to resolve these challenges and ensure the project's sustainability.
+> 
+> **iettnext v2** will be released as a fully **open-source** project, including the backend architecture. Thank you for your continued support and understanding.
+
+
 [🇹🇷 Türkçe](./README.tr.md)
 
 ## 📱 App Pages
