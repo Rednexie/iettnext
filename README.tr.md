@@ -1,7 +1,7 @@
 # iettnext – İstanbul Toplu Taşıma Asistanı
 
 
-[!Caution] 
+[!Caution] >
 ​Değerli kullanıcılar,
 ​İETTNext, İstanbul Büyükşehir Belediyesi (İBB) tarafından uygulanan idari baskılar ve veri erişim kısıtlamaları nedeniyle geçici olarak kapatılmıştır.
 ​Süreci profesyonel bir zeminde çözüme kavuşturmak adına, önümüzdeki yaz dönemi boyunca belediye yetkilileriyle gerekli görüşmelerin gerçekleştirilmesi planlanmaktadır. Hedefimiz, projenin yasal altyapısını netleştirerek hizmetin devamlılığını sağlamaktır.
