@@ -9,6 +9,10 @@
 > Yaz dönemi boyunca belediye yetkilileriyle gerekli görüşmelerin gerçekleştirilmesi planlanmaktadır. Hedefimiz, projenin yasal altyapısını netleştirerek hizmetin devamlılığını sağlamaktır.
 > 
 > **iettnext v2** sürümü; backend (arka uç) kodları da dahil olmak üzere tamamen **açık kaynaklı** olarak yayınlanacaktır. Sabrınız ve desteğiniz için teşekkür ederiz.
+>
+> Şimdilik, resmi uygulama olan [Otobüsüm Nerede](https://play.google.com/store/apps/details?id=com.iett.otobusumnerede)'yi kullanabilirsiniz.
+>
+> ~ rednexie
 
 
 
