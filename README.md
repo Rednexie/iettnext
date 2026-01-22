@@ -8,7 +8,8 @@
 > We plan to hold formal meetings with municipality officials during the upcoming summer to resolve these challenges and ensure the project's sustainability.
 > 
 > **iettnext v2** will be released as a fully **open-source** project, including the backend architecture. Thank you for your continued support and understanding.
-> Good Luck with the official application [Otobüsüm Nerede](https://play.google.com/store/apps/details?id=com.iett.otobusumnerede), for now.
+> 
+> You can alternatively use the official application [Otobüsüm Nerede](https://play.google.com/store/apps/details?id=com.iett.otobusumnerede), for now.
 >
 > ~ rednexie
 
